@@ -1,10 +1,15 @@
 package main
 
 import (
+	pb "chord/protocol" // Update path as needed
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"strings"
+	"time"
+
+	"google.golang.org/grpc"
 )
 
 var (
@@ -21,10 +26,6 @@ var (
 )
 
 func init() {
-
-}
-
-func main() {
 	flag.StringVar(&IP_addr, "a", "127.0.0.1", "Chord IP Address")
 	flag.IntVar(&port, "p", 1234, "The port that the Chord client will bind to and listen on. Represented as a base-10 integer.")
 
@@ -39,10 +40,20 @@ func main() {
 
 	flag.Parse()
 
-	validatInput()
+	validateInput()
 
-	go RunShell(nil)
+}
 
+func main() {
+
+
+
+	node, _ := StartServer()
+	
+
+
+
+	go RunShell(node)
 }
 func RunShell(node *Node) {}
 
@@ -52,10 +63,54 @@ func RunShell(node *Node) {}
 
 
 
+func StartServer() (*Node, error) {
+
+	node := &Node{
+		Address:     IP_addr,
+		FingerTable: make([]string, keySize+1),
+		Predecessor: "", //TODO, to chech were to update this 
+		Successors:  nil,
+		Bucket:      make(map[string]string),
+	}
+    //TOD add more logic here
+
+	// Start listening for RPC calls
+	grpcServer := grpc.NewServer()
+	pb.RegisterChordServer(grpcServer, node)
+
+	lis, err := net.Listen("tcp", node.Address)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to listen: %v", err)
+	}
+
+	// Start server in goroutine
+	log.Printf("Starting Chord node server on %s", node.Address)
+	go func() {
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
+	}()
+
+	go func() {
+		nextFinger := 0
+		for {
+			time.Sleep(time.Second / 3)
+			node.stabilize()
+
+			time.Sleep(time.Second / 3)
+			nextFinger = node.fixFingers(nextFinger)
+
+			time.Sleep(time.Second / 3)
+			node.checkPredecessor()
+		}
+	}()
+
+	return node, nil
+}
 
 
-
-func validatInput() {
+func validateInput() {
 
 	if IP_addr == "" || net.ParseIP(IP_addr).To4() == nil {
 		log.Fatal("-a must be a valid IPv4 address, e.g. 128.8.126.63")
