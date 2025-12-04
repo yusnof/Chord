@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
 	"sync"
+	"time"
 
-	pb "chord/protocol"  // Update path as needed
+	pb "chord/protocol" // Update path as needed
 )
 
 const (
@@ -122,9 +124,28 @@ func (n *Node) GetAll(ctx context.Context, req *pb.GetAllRequest) (*pb.GetAllRes
 
 	return &pb.GetAllResponse{KeyValues: keyValues}, nil
 }
+//TODO the node should ping the node before to know that its alive, 
 
+//of resose. 
 func (n *Node) checkPredecessor() {
 	// TODO: Student will implement this
+
+	//we have no predecessor, exit if
+	if(n.Predecessor == ""){
+		log.Print("Empty Predecessor")
+		return
+	}else{
+		req := &pb.PingRequest{}
+		res := &pb.PingResponse{}
+
+	    err := n.call(addr(n.Predecessor), "PING", req, res)
+
+		if err != nil{
+			n.Predecessor = ""
+		}
+
+	}
+	
 }
 
 func (n *Node) stabilize() {
@@ -138,6 +159,22 @@ func (n *Node) fixFingers(nextFinger int) int {
 		nextFinger = 1
 	}
 	return nextFinger
+}
+//will be used in order to call the other nodes.
+func (n *Node) call(address string, method string, request interface{}, reply interface{}) error{
+
+	if(method == "PING"){
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		_, err := n.Ping(ctx, request.(*pb.PingRequest)) // type asseration, will panik if not right
+		if(err != nil){
+			return errors.New("Ping was not succ")
+		}
+
+	}
+
+	return nil 
 }
 
 // format an address for printing

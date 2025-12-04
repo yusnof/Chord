@@ -20,6 +20,7 @@ import (
 var localaddress string
 
 // Find our local IP address
+// will be called only once as its a init function
 func init() {
 	// Configure log package to show short filename, line number and timestamp with only time
 	log.SetFlags(log.Lshortfile | log.Ltime)
