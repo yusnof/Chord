@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,12 +16,17 @@ import (
 )
 
 var (
+	node_addr    IPandPortAddr
 	localaddress string // TODO to be removed
 )
 
 type IPandPortAddr struct {
 	IP   string
-	Port string
+	Port int
+}
+
+func My_IP_tostring() string {
+	return node_addr.IP + ":" + strconv.Itoa(node_addr.Port)
 }
 
 func main() {
@@ -95,12 +101,9 @@ func RunShell(node *Node) {
 }
 
 func StartServer(cfg Config) *Node {
-	
+
 	node := &Node{
-		Address: IPandPortAddr{
-			IP: cfg.IPAddr,
-			Port: cfg.JoinAddr,
-		},
+		Address:     My_IP_tostring(),
 		FingerTable: make([]string, keySize+1),
 		Predecessor: "", //TODO, to chech were to update this
 		Successors:  nil,
@@ -113,20 +116,20 @@ func StartServer(cfg Config) *Node {
 
 	pb.RegisterChordServer(grpcServer, node)
 
-	lis, err := net.Listen("tcp", ":"+node.Address.Port)
+	lis, err := net.Listen("tcp", ":"+strconv.Itoa(cfg.Port))
 
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
 	go func() {
-		log.Printf("Starting Chord node server on %s", node.Address.Port)
+		log.Printf("Starting Chord node server on %s", strconv.Itoa(cfg.Port))
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
 	if cfg.Flag_first_node {
-		node.Successors = []string{node.Address.Port} // TODO change this to hold the ip of the whole
+		//node.Successors = []string{node.Address} // TODO change this to hold the ip of the whole
 	} else {
 		// node.Successors = []string{nprime} TODO not sure about this one
 	}

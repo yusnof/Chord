@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"strconv"
 	"sync"
 	"time"
 
@@ -28,9 +29,8 @@ var (
 // Node represents a node in the Chord DHT
 type Node struct {
 	pb.UnimplementedChordServer
-	mu sync.RWMutex
-
-	Address     IPandPortAddr
+	mu          sync.RWMutex
+	Address     string
 	Predecessor string
 	Successors  []string
 	FingerTable []string
@@ -38,10 +38,13 @@ type Node struct {
 	Bucket map[string]string
 }
 
+func (n *Node) Node_tostring() string {
+	return "node: IP:" + node_addr.IP + ":" + strconv.Itoa(node_addr.Port) + "\n" + "Predecessor:" + n.Predecessor + "\n"
+}
+
 func Lookup() any {
 	panic("unimplemented")
 }
-
 
 // get the sha1 hash of a string as a bigint
 func hash(elt string) *big.Int {
@@ -79,7 +82,7 @@ func (n *Node) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse,
 	log.Print("ping: received request")
 
 	err := PingNode(ctx, "")
-	
+
 	return &pb.PingResponse{}, err
 }
 
@@ -132,28 +135,29 @@ func (n *Node) GetAll(ctx context.Context, req *pb.GetAllRequest) (*pb.GetAllRes
 
 	return &pb.GetAllResponse{KeyValues: keyValues}, nil
 }
-//TODO the node should ping the node before to know that its alive, 
 
-//of resose. 
+//TODO the node should ping the node before to know that its alive,
+
+// of resose.
 func (n *Node) checkPredecessor() {
 	// TODO: Student will implement this
 
 	//we have no predecessor, exit if
-	if(n.Predecessor == ""){
+	if n.Predecessor == "" {
 		log.Print("Empty Predecessor")
 		return
-	}else{
+	} else {
 		req := &pb.PingRequest{}
 		res := &pb.PingResponse{}
 
-	    err := n.call(n.Predecessor, "PING", req, res)
+		err := n.call(n.Predecessor, "PING", req, res)
 
-		if err != nil{
+		if err != nil {
 			n.Predecessor = ""
 		}
 
 	}
-	
+
 }
 
 func (n *Node) stabilize() {
@@ -168,21 +172,22 @@ func (n *Node) fixFingers(nextFinger int) int {
 	}
 	return nextFinger
 }
-//will be used in order to call the other nodes.
-func (n *Node) call(address string, method string, request interface{}, reply interface{}) error{
 
-	if(method == "PING"){
+// will be used in order to call the other nodes.
+func (n *Node) call(address string, method string, request interface{}, reply interface{}) error {
+
+	if method == "PING" {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
 		_, err := n.Ping(ctx, request.(*pb.PingRequest)) // type asseration, will panik if not right
-		if(err != nil){
+		if err != nil {
 			return errors.New("Ping was not succ")
 		}
 
 	}
 
-	return nil 
+	return nil
 }
 
 // format an address for printing
@@ -205,7 +210,7 @@ func (n *Node) dump() {
 	// predecessor and successor links
 	fmt.Println("Neighborhood")
 	fmt.Println("pred:   ", addr(n.Predecessor))
-	fmt.Println("self:   ", addr(n.Address.Port))
+	fmt.Println("self:   ", addr(n.Address))
 	for i, succ := range n.Successors {
 		fmt.Printf("succ  %d: %s\n", i, addr(succ))
 	}
