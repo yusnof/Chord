@@ -1,4 +1,4 @@
-/*
+
 package main
 
 import (
@@ -46,7 +46,7 @@ func resolveAddress(address string) string {
 	} else if !strings.Contains(address, ":") {
 		return net.JoinHostPort(address, defaultPort)
 	}
-	return address
+	return addressIP_addr
 }
 
 // StartServer starts the gRPC server for this node

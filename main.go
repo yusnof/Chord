@@ -1,7 +1,11 @@
 package main
 
 import (
-	pb "chord/protocol" // Update path as needed
+	"bufio"
+	pb "chord/protocol"
+	"io"
+	"os"
+
 	"flag"
 	"fmt"
 	"log"
@@ -13,21 +17,22 @@ import (
 )
 
 var (
-	IP_addr      string
-	port         int
-	joinAddr     string
-	joinPort     int
-	ts           int
-	tff          int
-	tcp          int
-	r            int
-	i            string
-	localaddress string // TODO to be removed
+	IP_addr         string
+	Port            int
+	joinAddr        string
+	joinPort        int
+	ts              int
+	tff             int
+	tcp             int
+	r               int
+	flag_first_node bool
+	i               string
+	localaddress    string // TODO to be removed
 )
 
 func init() {
 	flag.StringVar(&IP_addr, "a", "127.0.0.1", "Chord IP Address")
-	flag.IntVar(&port, "p", 1234, "The port that the Chord client will bind to and listen on. Represented as a base-10 integer.")
+	flag.IntVar(&Port, "p", 1234, "The port that the Chord client will bind to and listen on. Represented as a base-10 integer.")
 
 	flag.StringVar(&joinAddr, "ja", "", "The IP address of the machine running a Chord node. The Chord client will join this node’s ring")
 
@@ -46,62 +51,122 @@ func init() {
 
 func main() {
 
-
-
 	node, _ := StartServer()
-	
-
-
 
 	go RunShell(node)
 }
-func RunShell(node *Node) {}
+func RunShell(node *Node) {
+	reader := bufio.NewReader(os.Stdin)
 
+	for {
+		fmt.Print("> ")
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				fmt.Println("\nExiting...")
+				return
+			}
+			fmt.Println("Error reading input:", err)
+			continue
+		}
 
+		parts := strings.Fields(input)
+		if len(parts) == 0 {
+			continue
+		}
 
+		//ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		//defer cancel()
 
+		switch parts[0] {
+		case "help":
+			fmt.Println("Available commands:")
+			fmt.Println("  help              - Show this help message")
+			fmt.Println("  Lookup     -takes as input the name of a file to be searched (e.g., “Hello.txt”).")
+			fmt.Println("  StoreFile  -takes the location of a file on a local disk, then performs a lookup to find the Chord node to store the file at")
+			fmt.Println("  PrintState - requires no input. The Chord client outputs its local state information at the current time")
 
+			fmt.Println("  quit              - Exit the program")
 
+		case "Lookup":
+			if len(parts) < 2 {
+				fmt.Println("Usage: Lookup <File Name>")
+				continue
+			}
+			err := Lookup()
+
+			if err != nil {
+				fmt.Printf("Ping failed: %v\n", err)
+			} else {
+				fmt.Println("Ping successful")
+			}
+
+		case "StoreFile":
+			//TODO
+		case "PrintState":
+			//TODO
+
+		case "quit":
+			fmt.Println("Exiting...")
+			return
+
+		default:
+			fmt.Println("Unknown command. Type 'help' for available commands.")
+
+		}
+
+	}
+}
 
 func StartServer() (*Node, error) {
 
+	address := fmt.Sprintf(":%d", Port)
+
+	log.Print("heloo")
+
 	node := &Node{
-		Address:     IP_addr,
+		Address:     address,
 		FingerTable: make([]string, keySize+1),
-		Predecessor: "", //TODO, to chech were to update this 
+		Predecessor: "", //TODO, to chech were to update this
 		Successors:  nil,
 		Bucket:      make(map[string]string),
 	}
-    //TOD add more logic here
+	//TOD add more logic here
 
 	// Start listening for RPC calls
 	grpcServer := grpc.NewServer()
+
 	pb.RegisterChordServer(grpcServer, node)
 
 	lis, err := net.Listen("tcp", node.Address)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to listen: %v", err)
+		log.Fatalf("failed to listen: %v", err)
 	}
 
-	// Start server in goroutine
-	log.Printf("Starting Chord node server on %s", node.Address)
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Fatalf("failed to serve: %v", err)
 		}
+		log.Printf("Starting Chord node server on %s", node.Address)
+
 	}()
+	if flag_first_node {
+		node.Successors = []string{node.Address}
+	} else {
+		// node.Successors = []string{nprime} TODO not sure about this one
+	}
 
 	go func() {
 		nextFinger := 0
 		for {
-			time.Sleep(time.Second / 3)
+			time.Sleep(time.Millisecond * time.Duration(ts))
 			node.stabilize()
 
-			time.Sleep(time.Second / 3)
+			time.Sleep(time.Millisecond * time.Duration(tff))
 			nextFinger = node.fixFingers(nextFinger)
 
-			time.Sleep(time.Second / 3)
+			time.Sleep(time.Millisecond * time.Duration(tcp))
 			node.checkPredecessor()
 		}
 	}()
@@ -109,13 +174,13 @@ func StartServer() (*Node, error) {
 	return node, nil
 }
 
-
 func validateInput() {
+	flag_first_node = true
 
 	if IP_addr == "" || net.ParseIP(IP_addr).To4() == nil {
 		log.Fatal("-a must be a valid IPv4 address, e.g. 128.8.126.63")
 	}
-	if port < 1024 || port > 65535 {
+	if Port < 1024 || Port > 65535 {
 		log.Fatal("-p must be in range 1024–65535")
 	}
 
@@ -123,8 +188,8 @@ func validateInput() {
 		log.Fatal("--ja and --jp must be given together, or neither")
 	}
 
-	// 2) if both given, validate them
 	if joinAddr != "" && joinPort != 0 {
+		flag_first_node = false
 		if net.ParseIP(joinAddr).To4() == nil {
 			log.Fatal("--ja must be a valid IPv4 address")
 		}
@@ -132,6 +197,7 @@ func validateInput() {
 			log.Fatal("--jp must be in range 1024–65535")
 		}
 	}
+
 	if ts <= 1 || ts >= 60000 {
 		log.Fatal("Ts must be specified, or between 1 and 60k")
 
@@ -154,7 +220,6 @@ func validateInput() {
 
 	}
 }
-
 
 func isHex(s string) bool {
 	for _, c := range s {

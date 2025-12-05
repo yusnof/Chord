@@ -38,6 +38,11 @@ type Node struct {
 	Bucket map[string]string
 }
 
+func Lookup() any {
+	panic("unimplemented")
+}
+
+
 // get the sha1 hash of a string as a bigint
 func hash(elt string) *big.Int {
 	hasher := sha1.New()
