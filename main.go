@@ -17,48 +17,45 @@ import (
 )
 
 var (
-	IP_addr         string
-	Port            int
-	joinAddr        string
-	joinPort        int
-	ts              int
-	tff             int
-	tcp             int
-	r               int
 	flag_first_node bool
-	i               string
 	localaddress    string // TODO to be removed
 )
 
-func init() {
-	flag.StringVar(&IP_addr, "a", "127.0.0.1", "Chord IP Address")
-	flag.IntVar(&Port, "p", 1234, "The port that the Chord client will bind to and listen on. Represented as a base-10 integer.")
+func loadconfig() Config {
+	cfg := Config{}
 
-	flag.StringVar(&joinAddr, "ja", "", "The IP address of the machine running a Chord node. The Chord client will join this node’s ring")
+	flag.StringVar(&cfg.IPAddr, "a", "127.0.0.1", "Chord IP Address")
+	flag.IntVar(&cfg.Port, "p", 1234, "The port that the Chord client will bind to and listen on. Represented as a base-10 integer.")
 
-	flag.IntVar(&joinPort, "jp", 0, "The port that an existing Chord node is bound to and listening on.")
-	flag.IntVar(&ts, "ts", 3000, "The time in milliseconds between invocations of ‘stabilize’. Represented as a base-10 integer.")
-	flag.IntVar(&tff, "tff", 1000, "The time in milliseconds between invocations of ‘fix fingers’.")
-	flag.IntVar(&tcp, "tcp", 3000, "The time in milliseconds between invocations of check predecessor’")
-	flag.IntVar(&r, "r", 4, "The number of successors maintained by the Chord client. ")
-	flag.StringVar(&i, "i", "", "he identifier (ID) assigned to the Chord client which will override the ID computed by the SHA1 sum of the client’s IP address and port number.")
+	flag.StringVar(&cfg.JoinAddr, "ja", "", "The IP address of the machine running a Chord node. The Chord client will join this node’s ring")
+
+	flag.IntVar(&cfg.JoinPort, "jp", 0, "The port that an existing Chord node is bound to and listening on.")
+	flag.IntVar(&cfg.TS, "ts", 3000, "The time in milliseconds between invocations of ‘stabilize’. Represented as a base-10 integer.")
+	flag.IntVar(&cfg.TFF, "tff", 1000, "The time in milliseconds between invocations of ‘fix fingers’.")
+	flag.IntVar(&cfg.TCP, "tcp", 3000, "The time in milliseconds between invocations of check predecessor’")
+	flag.IntVar(&cfg.R, "r", 4, "The number of successors maintained by the Chord client. ")
+	flag.StringVar(&cfg.I, "i", "", "he identifier (ID) assigned to the Chord client which will override the ID computed by the SHA1 sum of the client’s IP address and port number.")
 
 	flag.Parse()
 
-	validateInput()
+	validateInput(cfg)
+
+	return cfg
 
 }
 
 func main() {
 
-	node, _ := StartServer()
+	cfg := loadconfig()
 
-	go RunShell(node)
+	node := StartServer(cfg)
+
+	RunShell(node)
 }
 func RunShell(node *Node) {
 	reader := bufio.NewReader(os.Stdin)
-
 	for {
+
 		fmt.Print("> ")
 		input, err := reader.ReadString('\n')
 		if err != nil {
@@ -118,11 +115,9 @@ func RunShell(node *Node) {
 	}
 }
 
-func StartServer() (*Node, error) {
+func StartServer(cfg Config) *Node {
 
-	address := fmt.Sprintf(":%d", Port)
-
-	log.Print("heloo")
+	address := fmt.Sprintf(":%d", cfg.Port)
 
 	node := &Node{
 		Address:     address,
@@ -145,11 +140,10 @@ func StartServer() (*Node, error) {
 	}
 
 	go func() {
+		log.Printf("Starting Chord node server on %s", node.Address)
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Fatalf("failed to serve: %v", err)
 		}
-		log.Printf("Starting Chord node server on %s", node.Address)
-
 	}()
 	if flag_first_node {
 		node.Successors = []string{node.Address}
@@ -160,61 +154,61 @@ func StartServer() (*Node, error) {
 	go func() {
 		nextFinger := 0
 		for {
-			time.Sleep(time.Millisecond * time.Duration(ts))
+			time.Sleep(time.Millisecond * time.Duration(cfg.TS))
 			node.stabilize()
 
-			time.Sleep(time.Millisecond * time.Duration(tff))
+			time.Sleep(time.Millisecond * time.Duration(cfg.TFF))
 			nextFinger = node.fixFingers(nextFinger)
 
-			time.Sleep(time.Millisecond * time.Duration(tcp))
+			time.Sleep(time.Millisecond * time.Duration(cfg.TCP))
 			node.checkPredecessor()
 		}
 	}()
 
-	return node, nil
+	return node
 }
 
-func validateInput() {
+func validateInput(cfg Config) {
 	flag_first_node = true
 
-	if IP_addr == "" || net.ParseIP(IP_addr).To4() == nil {
+	if cfg.IPAddr == "" || net.ParseIP(cfg.IPAddr).To4() == nil {
 		log.Fatal("-a must be a valid IPv4 address, e.g. 128.8.126.63")
 	}
-	if Port < 1024 || Port > 65535 {
+	if cfg.Port < 1024 || cfg.Port > 65535 {
 		log.Fatal("-p must be in range 1024–65535")
 	}
 
-	if (joinAddr == "" && joinPort != 0) || (joinAddr != "" && joinPort == 0) {
+	if (cfg.JoinAddr == "" && cfg.JoinPort != 0) || (cfg.JoinAddr != "" && cfg.JoinPort == 0) {
 		log.Fatal("--ja and --jp must be given together, or neither")
 	}
 
-	if joinAddr != "" && joinPort != 0 {
+	if cfg.JoinAddr != "" && cfg.JoinPort != 0 {
 		flag_first_node = false
-		if net.ParseIP(joinAddr).To4() == nil {
+		if net.ParseIP(cfg.JoinAddr).To4() == nil {
 			log.Fatal("--ja must be a valid IPv4 address")
 		}
-		if joinPort < 1024 || joinPort > 65535 {
+		if cfg.JoinPort < 1024 || cfg.JoinPort > 65535 {
 			log.Fatal("--jp must be in range 1024–65535")
 		}
 	}
 
-	if ts <= 1 || ts >= 60000 {
+	if cfg.TS <= 1 || cfg.TS >= 60000 {
 		log.Fatal("Ts must be specified, or between 1 and 60k")
 
 	}
-	if tff <= 1 || tff >= 60000 {
+	if cfg.TFF <= 1 || cfg.TFF >= 60000 {
 		log.Fatal("Tff must be specified, or between 1 and 60k")
 
 	}
-	if tcp <= 1 || tcp >= 60000 {
+	if cfg.TCP <= 1 || cfg.TCP >= 60000 {
 		log.Fatal("tcp must be specified, or between 1 and 60k")
 
 	}
-	if r <= 1 || r >= 32 {
+	if cfg.R <= 1 || cfg.R >= 32 {
 		log.Fatal("R must be specified, or between 1 and 32")
 	}
-	if i != "" {
-		if len(i) != 40 || !isHex(i) {
+	if cfg.I != "" {
+		if len(cfg.I) != 40 || !isHex(cfg.I) {
 			log.Fatal("-i must be 40 hex chars (0-9a-fA-F)")
 		}
 
