@@ -30,7 +30,7 @@ type Node struct {
 	pb.UnimplementedChordServer
 	mu sync.RWMutex
 
-	Address     string
+	Address     IPandPortAddr
 	Predecessor string
 	Successors  []string
 	FingerTable []string
@@ -77,7 +77,10 @@ func between(start, elt, end *big.Int, inclusive bool) bool {
 // Ping implements the Ping RPC method
 func (n *Node) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
 	log.Print("ping: received request")
-	return &pb.PingResponse{}, nil
+
+	err := PingNode(ctx, "")
+	
+	return &pb.PingResponse{}, err
 }
 
 // Put implements the Put RPC method
@@ -143,7 +146,7 @@ func (n *Node) checkPredecessor() {
 		req := &pb.PingRequest{}
 		res := &pb.PingResponse{}
 
-	    err := n.call(addr(n.Predecessor), "PING", req, res)
+	    err := n.call(n.Predecessor, "PING", req, res)
 
 		if err != nil{
 			n.Predecessor = ""
@@ -202,7 +205,7 @@ func (n *Node) dump() {
 	// predecessor and successor links
 	fmt.Println("Neighborhood")
 	fmt.Println("pred:   ", addr(n.Predecessor))
-	fmt.Println("self:   ", addr(n.Address))
+	fmt.Println("self:   ", addr(n.Address.Port))
 	for i, succ := range n.Successors {
 		fmt.Printf("succ  %d: %s\n", i, addr(succ))
 	}
