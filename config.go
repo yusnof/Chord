@@ -5,18 +5,7 @@ import (
     "net"
 	"os"
 )
-type Config struct {
-    IPAddr   string
-    Port     int
-    JoinAddr string
-    JoinPort int
-    TS       int
-    TFF      int
-    TCP      int
-    R        int
-    I       string
-    Flag_first_node bool
-}
+
 
 func LogerConfigurationSetup() *os.File {
 	logFile, err := os.OpenFile("chord.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)

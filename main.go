@@ -20,14 +20,6 @@ var (
 	localaddress string // TODO to be removed
 )
 
-type IPandPortAddr struct {
-	IP   string
-	Port int
-}
-
-func My_IP_tostring() string {
-	return node_addr.IP + ":" + strconv.Itoa(node_addr.Port)
-}
 
 
 func main() {
@@ -37,7 +29,7 @@ func main() {
     defer logFile.Close()  
     defer logFile.Sync()
 
-	log.Println("TEST: Logging started")
+	log.Println("Chord: Logging started")
 
 	cfg := Loadconfig()
 
@@ -86,9 +78,9 @@ func RunShell(node *Node) {
 			err := Lookup()
 
 			if err != nil {
-				fmt.Printf("Ping failed: %v\n", err)
+				fmt.Printf("Lookup failed: %v\n", err)
 			} else {
-				fmt.Println("Ping successful")
+				fmt.Println("Lookup successful")
 			}
 
 		case "StoreFile":

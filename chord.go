@@ -7,14 +7,13 @@ import (
 	"log"
 	"math/big"
 	"strconv"
-	"sync"
 	"time"
 
 	pb "chord/protocol" // Update path as needed
 )
 
 const (
-	defaultPort       = "3410"
+	//defaultPort       = "3410"
 	successorListSize = 3
 	keySize           = sha1.Size * 8
 	maxLookupSteps    = 32
@@ -25,23 +24,13 @@ var (
 	hashMod = new(big.Int).Exp(big.NewInt(2), big.NewInt(keySize), nil)
 )
 
-// Node represents a node in the Chord DHT
-type Node struct {
-	pb.UnimplementedChordServer
-	mu          sync.RWMutex
-	Address     string
-	Predecessor *Node
-	Successors  []*Node
-	FingerTable []string
 
-	Bucket map[string]string
-}
 
 func (n *Node) toString() string {
 	return "node: IP:" + node_addr.IP + ":" + strconv.Itoa(node_addr.Port) + "\n" + "Predecessor:" + "\n"
 }
 func(n *Node) Create(){
-	n.Predecessor = nil 
+	n.Predecessor = nil // not need to hold this 
 	n.Successors = make([]*Node, successorListSize)
 	n.Successors[0] = n 
 }
@@ -51,6 +40,12 @@ func(n *Node) Join(){
 }
 
 func Lookup() any {
+	panic("unimplemented")
+}
+func StoreFile() any{
+	panic("unimplemented")
+}
+func PrintState() any{
 	panic("unimplemented")
 }
 
@@ -148,6 +143,8 @@ func (n *Node) call(address string, method string, request interface{}, reply in
 
 	return nil
 }
+
+
 
 
 // maybe will delete later 
