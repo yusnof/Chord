@@ -29,7 +29,15 @@ func My_IP_tostring() string {
 	return node_addr.IP + ":" + strconv.Itoa(node_addr.Port)
 }
 
+
 func main() {
+
+	// will be loging into a file in order to not block the CLI 
+	logFile := LogerConfigurationSetup()
+    defer logFile.Close()  
+    defer logFile.Sync()
+
+	log.Println("TEST: Logging started")
 
 	cfg := Loadconfig()
 
@@ -105,7 +113,6 @@ func StartServer(cfg Config) *Node {
 	node := &Node{
 		Address:     My_IP_tostring(),
 		FingerTable: make([]string, keySize+1),
-		Predecessor: "", //TODO, to chech were to update this
 		Successors:  nil,
 		Bucket:      make(map[string]string),
 	}
@@ -129,10 +136,12 @@ func StartServer(cfg Config) *Node {
 		}
 	}()
 	if cfg.Flag_first_node {
-		//node.Successors = []string{node.Address} // TODO change this to hold the ip of the whole
+		node.Create()
 	} else {
-		// node.Successors = []string{nprime} TODO not sure about this one
+		node.Join()
 	}
+
+	node.toString()
 
 	go func() {
 		nextFinger := 0

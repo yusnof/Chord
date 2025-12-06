@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha1"
 	"errors"
-	"fmt"
 	"log"
 	"math/big"
 	"strconv"
@@ -31,15 +30,24 @@ type Node struct {
 	pb.UnimplementedChordServer
 	mu          sync.RWMutex
 	Address     string
-	Predecessor string
-	Successors  []string
+	Predecessor *Node
+	Successors  []*Node
 	FingerTable []string
 
 	Bucket map[string]string
 }
 
-func (n *Node) Node_tostring() string {
-	return "node: IP:" + node_addr.IP + ":" + strconv.Itoa(node_addr.Port) + "\n" + "Predecessor:" + n.Predecessor + "\n"
+func (n *Node) toString() string {
+	return "node: IP:" + node_addr.IP + ":" + strconv.Itoa(node_addr.Port) + "\n" + "Predecessor:" + "\n"
+}
+func(n *Node) Create(){
+	n.Predecessor = nil 
+	n.Successors = make([]*Node, successorListSize)
+	n.Successors[0] = n 
+}
+
+func(n *Node) Join(){
+	panic("unimplemented")
 }
 
 func Lookup() any {
@@ -85,6 +93,65 @@ func (n *Node) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse,
 
 	return &pb.PingResponse{}, err
 }
+
+
+//TODO the node should ping the node before to know that its alive,
+
+// of resose.
+func (n *Node) checkPredecessor() {
+	// TODO: Student will implement this
+
+	//we have no predecessor, exit if
+	if n.Predecessor == nil {
+		log.Print("Empty Predecessor")
+		return
+	} else {
+		req := &pb.PingRequest{}
+		res := &pb.PingResponse{}
+
+		err := n.call(n.Predecessor.Address, "PING", req, res)
+
+		if err != nil {
+			n.Predecessor = nil
+		}
+
+	}
+
+}
+
+func (n *Node) stabilize() {
+	// TODO: Student will implement this
+}
+
+func (n *Node) fixFingers(nextFinger int) int {
+	// TODO: Student will implement this
+	nextFinger++
+	if nextFinger > keySize {
+		nextFinger = 1
+	}
+	return nextFinger
+}
+
+// will be used in order to call the other nodes.
+func (n *Node) call(address string, method string, request interface{}, reply interface{}) error {
+
+	if method == "PING" {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		_, err := n.Ping(ctx, request.(*pb.PingRequest)) // type asseration, will panik if not right
+		if err != nil {
+			return errors.New("Ping was not succ")
+		}
+
+	}
+
+	return nil
+}
+
+
+// maybe will delete later 
+
 
 // Put implements the Put RPC method
 func (n *Node) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error) {
@@ -136,99 +203,3 @@ func (n *Node) GetAll(ctx context.Context, req *pb.GetAllRequest) (*pb.GetAllRes
 	return &pb.GetAllResponse{KeyValues: keyValues}, nil
 }
 
-//TODO the node should ping the node before to know that its alive,
-
-// of resose.
-func (n *Node) checkPredecessor() {
-	// TODO: Student will implement this
-
-	//we have no predecessor, exit if
-	if n.Predecessor == "" {
-		log.Print("Empty Predecessor")
-		return
-	} else {
-		req := &pb.PingRequest{}
-		res := &pb.PingResponse{}
-
-		err := n.call(n.Predecessor, "PING", req, res)
-
-		if err != nil {
-			n.Predecessor = ""
-		}
-
-	}
-
-}
-
-func (n *Node) stabilize() {
-	// TODO: Student will implement this
-}
-
-func (n *Node) fixFingers(nextFinger int) int {
-	// TODO: Student will implement this
-	nextFinger++
-	if nextFinger > keySize {
-		nextFinger = 1
-	}
-	return nextFinger
-}
-
-// will be used in order to call the other nodes.
-func (n *Node) call(address string, method string, request interface{}, reply interface{}) error {
-
-	if method == "PING" {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-
-		_, err := n.Ping(ctx, request.(*pb.PingRequest)) // type asseration, will panik if not right
-		if err != nil {
-			return errors.New("Ping was not succ")
-		}
-
-	}
-
-	return nil
-}
-
-// format an address for printing
-func addr(a string) string {
-	if a == "" {
-		return "(empty)"
-	}
-	s := fmt.Sprintf("%040x", hash(a))
-	return s[:8] + ".. (" + a + ")"
-}
-
-// print useful info about the local node
-func (n *Node) dump() {
-	n.mu.RLock()
-	defer n.mu.RUnlock()
-
-	fmt.Println()
-	fmt.Println("Dump: information about this node")
-
-	// predecessor and successor links
-	fmt.Println("Neighborhood")
-	fmt.Println("pred:   ", addr(n.Predecessor))
-	fmt.Println("self:   ", addr(n.Address))
-	for i, succ := range n.Successors {
-		fmt.Printf("succ  %d: %s\n", i, addr(succ))
-	}
-	fmt.Println()
-	fmt.Println("Finger table")
-	i := 1
-	for i <= keySize {
-		for i < keySize && n.FingerTable[i] == n.FingerTable[i+1] {
-			i++
-		}
-		fmt.Printf(" [%3d]: %s\n", i, addr(n.FingerTable[i]))
-		i++
-	}
-	fmt.Println()
-	fmt.Println("Data items")
-	for k, v := range n.Bucket {
-		s := fmt.Sprintf("%040x", hash(k))
-		fmt.Printf("    %s.. %s => %s\n", s[:8], k, v)
-	}
-	fmt.Println()
-}

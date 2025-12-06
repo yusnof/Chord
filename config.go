@@ -3,6 +3,7 @@ import (
     "flag"
     "log"
     "net"
+	"os"
 )
 type Config struct {
     IPAddr   string
@@ -15,6 +16,20 @@ type Config struct {
     R        int
     I       string
     Flag_first_node bool
+}
+
+func LogerConfigurationSetup() *os.File {
+	logFile, err := os.OpenFile("chord.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalln("logger is bad ")
+	}
+
+	log.SetOutput(logFile)
+
+	// Add this to force immediate writes:
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	return logFile
 }
 
 func Loadconfig() Config {
@@ -34,14 +49,15 @@ func Loadconfig() Config {
 
 	flag.Parse()
 
-	validateInput(cfg)
+	validated_cfg := validateInput(&cfg)
 
-	return cfg
+	return *validated_cfg
 
 }
-func validateInput(cfg Config) {
+func validateInput(cfg *Config) (*Config){
 	cfg.Flag_first_node = true
 
+	
 	if cfg.IPAddr == "" || net.ParseIP(cfg.IPAddr).To4() == nil {
 		log.Fatal("-a must be a valid IPv4 address, e.g. 128.8.126.63")
 	}
@@ -84,6 +100,7 @@ func validateInput(cfg Config) {
 		}
 
 	}
+	return cfg 
 }
 
 func isHex(s string) bool {
