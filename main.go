@@ -16,18 +16,15 @@ import (
 )
 
 var (
-	node_addr    IPandPortAddr
 	localaddress string // TODO to be removed
 )
 
-
-
 func main() {
 
-	// will be loging into a file in order to not block the CLI 
+	// will be loging into a file in order to not block the CLI
 	logFile := LogerConfigurationSetup()
-    defer logFile.Close()  
-    defer logFile.Sync()
+	defer logFile.Close()
+	defer logFile.Sync()
 
 	log.Println("Chord: Logging started")
 
@@ -102,8 +99,13 @@ func RunShell(node *Node) {
 
 func StartServer(cfg Config) *Node {
 
+	addr := &NodeAddr{
+		IP:   cfg.IPAddr,
+		Port: cfg.Port,
+	}
+
 	node := &Node{
-		Address:     My_IP_tostring(),
+		Address:     addr,
 		FingerTable: make([]string, keySize+1),
 		Successors:  nil,
 		Bucket:      make(map[string]string),
@@ -130,7 +132,11 @@ func StartServer(cfg Config) *Node {
 	if cfg.Flag_first_node {
 		node.Create()
 	} else {
-		node.Join()
+		JoinAddr := &NodeAddr{
+			IP:   cfg.JoinAddr,
+			Port: cfg.JoinPort,
+		}
+		node.Join(JoinAddr)
 	}
 
 	node.toString()
@@ -153,10 +159,11 @@ func StartServer(cfg Config) *Node {
 }
 
 func resolveAddress(address string) string {
-	if strings.HasPrefix(address, ":") {
+	/*if strings.HasPrefix(address, ":") {
 		return net.JoinHostPort(localaddress, address[1:])
 	} else if !strings.Contains(address, ":") {
 		return net.JoinHostPort(address, strconv.Itoa(node_addr.Port))
-	}
+	}*/
 	return address
+
 }

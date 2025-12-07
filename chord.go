@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log"
 	"math/big"
-	"strconv"
 	"time"
 
 	pb "chord/protocol" // Update path as needed
@@ -25,27 +24,26 @@ var (
 )
 
 
-
-func (n *Node) toString() string {
-	return "node: IP:" + node_addr.IP + ":" + strconv.Itoa(node_addr.Port) + "\n" + "Predecessor:" + "\n"
-}
-func(n *Node) Create(){
-	n.Predecessor = nil // not need to hold this 
+func (n *Node) Create() {
+	n.Predecessor = nil // not need to hold this
 	n.Successors = make([]*Node, successorListSize)
-	n.Successors[0] = n 
+	n.Successors[0] = n
 }
 
-func(n *Node) Join(){
-	panic("unimplemented")
+func (n *Node) Join(node_addr *NodeAddr) {
+	//maybe fix to later 
+	n.Predecessor = node_addr
+	n.Successors = make([]*Node, successorListSize)
+	//panic("unimplemented")
 }
 
 func Lookup() any {
 	panic("unimplemented")
 }
-func StoreFile() any{
+func StoreFile() any {
 	panic("unimplemented")
 }
-func PrintState() any{
+func PrintState() any {
 	panic("unimplemented")
 }
 
@@ -84,11 +82,10 @@ func between(start, elt, end *big.Int, inclusive bool) bool {
 func (n *Node) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
 	log.Print("ping: received request")
 
-	err := PingNode(ctx, "")
+	err := PingNode(ctx, ToString(n.Predecessor))
 
 	return &pb.PingResponse{}, err
 }
-
 
 //TODO the node should ping the node before to know that its alive,
 
@@ -104,7 +101,7 @@ func (n *Node) checkPredecessor() {
 		req := &pb.PingRequest{}
 		res := &pb.PingResponse{}
 
-		err := n.call(n.Predecessor.Address, "PING", req, res)
+		err := n.call(ToString(n.Predecessor), "PING", req, res)
 
 		if err != nil {
 			n.Predecessor = nil
@@ -144,11 +141,7 @@ func (n *Node) call(address string, method string, request interface{}, reply in
 	return nil
 }
 
-
-
-
-// maybe will delete later 
-
+// maybe will delete later
 
 // Put implements the Put RPC method
 func (n *Node) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error) {
@@ -199,4 +192,3 @@ func (n *Node) GetAll(ctx context.Context, req *pb.GetAllRequest) (*pb.GetAllRes
 
 	return &pb.GetAllResponse{KeyValues: keyValues}, nil
 }
-

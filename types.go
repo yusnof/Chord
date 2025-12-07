@@ -10,20 +10,22 @@ import (
 type Node struct {
 	pb.UnimplementedChordServer
 	mu          sync.RWMutex
-	Address     string
-	Predecessor *Node
+	Address     *NodeAddr
+	Predecessor *NodeAddr 
 	Successors  []*Node
 	FingerTable []string
 
 	Bucket map[string]string
 }
-type IPandPortAddr struct {
+type NodeAddr struct {
 	IP   string
 	Port int
 }
-
-func My_IP_tostring() string {
+func ToString(node_addr *NodeAddr) string {
 	return node_addr.IP + ":" + strconv.Itoa(node_addr.Port)
+}
+func (n *Node) toString() string {
+	return "node: IP:" + n.Address.IP + ":" + strconv.Itoa(n.Address.Port) + "\n" + "Predecessor:" + "\n"
 }
 
 type Config struct {

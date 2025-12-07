@@ -9,3 +9,6 @@ go build
 
 
 ./chord join -addr ADDRESS [-port PORT]
+
+
+tail -f chord.log
