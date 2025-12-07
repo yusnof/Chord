@@ -156,7 +156,7 @@ func resolveAddress(address string) string {
 	if strings.HasPrefix(address, ":") {
 		return net.JoinHostPort(localaddress, address[1:])
 	} else if !strings.Contains(address, ":") {
-		return net.JoinHostPort(address, defaultPort)
+		return net.JoinHostPort(address, strconv.Itoa(node_addr.Port))
 	}
 	return address
 }

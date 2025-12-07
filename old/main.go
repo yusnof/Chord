@@ -1,5 +1,5 @@
 
-package main
+package old
 
 import (
 	"bufio"
@@ -17,37 +17,10 @@ import (
 
 	"google.golang.org/grpc"
 )
+var(
+	localaddress = 2 
+)
 
-// Find our local IP address
-// will be called only once as its a init function
-func init() {
-	// Configure log package to show short filename, line number and timestamp with only time
-	log.SetFlags(log.Lshortfile | log.Ltime)
-
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	localaddress = localAddr.IP.String()
-
-	if localaddress == "" {
-		panic("init: failed to find non-loopback interface with valid address on this node")
-	}
-	log.Printf("found local address %s\n", localaddress)
-}
-
-// resolveAddress handles :port format by adding the local address
-func resolveAddress(address string) string {
-	if strings.HasPrefix(address, ":") {
-		return net.JoinHostPort(localaddress, address[1:])
-	} else if !strings.Contains(address, ":") {
-		return net.JoinHostPort(address, defaultPort)
-	}
-	return addressIP_addr
-}
 
 // StartServer starts the gRPC server for this node
 func StartServer(address string, nprime string) (*Node, error) {
@@ -106,6 +79,10 @@ func StartServer(address string, nprime string) (*Node, error) {
 	}()
 
 	return node, nil
+}
+
+func resolveAddress(address string) string {
+	panic("unimplemented")
 }
 
 // RunShell provides an interactive command shell
@@ -288,6 +265,3 @@ func main1() {
 	// Run the interactive shell
 	RunShell(node)
 }
-
-
-*/
