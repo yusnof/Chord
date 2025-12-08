@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"time"
+	"net/rpc"
 )
 
 const (
@@ -54,14 +54,6 @@ func PrintState() any {
 	panic("unimplemented")
 }
 
-// Ping implements the Ping RPC method
-func (n *Node) Ping(ctx context.Context, req PingRequest) (PingResponse, error) {
-
-	log.Print("PINGED")
-
-	return PingResponse{}, nil
-}
-
 //TODO the node should ping the node before to know that its alive,
 
 // of resose.
@@ -75,7 +67,7 @@ func (n *Node) checkPredecessor() {
 		return
 	} else {
 
-		err := n.call(ToString(n.Predecessor), "PING", PingRequest{}, PingResponse{})
+		err := n.Call(ToString(n.Predecessor), "PING", PingRequest{}, PingResponse{})
 
 		if err != nil {
 			log.Print("Error in checkPredecessor:", err)
@@ -89,7 +81,7 @@ func (n *Node) checkPredecessor() {
 func (n *Node) stabilize() {
 	// TODO: Student will implement this
 
-	n.call(ToString(n.Predecessor), "GET_Predecessor", PingRequest{}, PingResponse{})
+	//n.call(ToString(n.Predecessor), "GET_Predecessor", PingRequest{}, PingResponse{})
 
 }
 
@@ -103,21 +95,27 @@ func (n *Node) fixFingers(nextFinger int) int {
 }
 
 // will be used in order to call the other nodes.
-func (n *Node) call(address string, method string, request interface{}, reply interface{}) error {
+func (n *Node) Call(address string, method string, request interface{}, reply interface{}) error {
+
 	if method == "PING" {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+		req := PingRequest{}
+		res := PingResponse{}
 
-		err := PingNode(ctx, address)
+		req.Message = "ping"
+
+		client, err := rpc.DialHTTP("tcp", address)
+		log.Printf("Pinging my pred: %w", address)
 		if err != nil {
-
+			log.Fatal("dialing:", err)
+		}
+		err = client.Call("Node.Ping", &req, &res)
+		if err != nil {
 			return fmt.Errorf("ping failed: %w", err)
 		}
+		if(res.Message != "ok"){
+			return fmt.Errorf("ping failed:", "withoutok")
 
-	}
-	if method == "GET_Predecessor" {
-		_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+		}
 
 	}
 

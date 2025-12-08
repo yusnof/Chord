@@ -52,6 +52,10 @@ type GetPredecessorResponse struct {
 	Node NodeAddr
 }
 
-type PingRequest struct{}
+type PingRequest struct{
+	Message string 
+}
 
-type PingResponse struct{}
+type PingResponse struct{
+	Message string 
+}
