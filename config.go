@@ -8,9 +8,9 @@ import (
 	"strconv"
 )
 
-
 func LogerConfigurationSetup() *os.File {
-	logFile, err := os.OpenFile("chord-"+ strconv.Itoa(os.Getpid()) + ".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	fileName := strconv.Itoa(os.Getpid())
+	logFile, err := os.OpenFile("chord-"+fileName+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalln("logger is bad ")
 	}
@@ -19,6 +19,9 @@ func LogerConfigurationSetup() *os.File {
 
 	// Add this to force immediate writes:
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	//this will break on other OS 
+	openNewTerminal(fileName)
 
 	return logFile
 }
@@ -35,7 +38,7 @@ func Loadconfig() Config {
 	flag.IntVar(&cfg.TS, "ts", 3000, "The time in milliseconds between invocations of ‘stabilize’. Represented as a base-10 integer.")
 	flag.IntVar(&cfg.TFF, "tff", 1000, "The time in milliseconds between invocations of ‘fix fingers’.")
 	flag.IntVar(&cfg.TCP, "tcp", 3000, "The time in milliseconds between invocations of check predecessor’")
-	
+
 	flag.IntVar(&cfg.R, "r", 4, "The number of successors maintained by the Chord client. ")
 	flag.StringVar(&cfg.I, "i", "", "he identifier (ID) assigned to the Chord client which will override the ID computed by the SHA1 sum of the client’s IP address and port number.")
 
@@ -46,10 +49,9 @@ func Loadconfig() Config {
 	return *validated_cfg
 
 }
-func validateInput(cfg *Config) (*Config){
+func validateInput(cfg *Config) *Config {
 	cfg.Flag_first_node = true
 
-	
 	if cfg.IPAddr == "" || net.ParseIP(cfg.IPAddr).To4() == nil {
 		log.Fatal("-a must be a valid IPv4 address, e.g. 128.8.126.63")
 	}
@@ -62,7 +64,7 @@ func validateInput(cfg *Config) (*Config){
 	}
 
 	if cfg.JoinAddr != "" && cfg.JoinPort != 0 {
-		cfg.Flag_first_node= false
+		cfg.Flag_first_node = false
 		if net.ParseIP(cfg.JoinAddr).To4() == nil {
 			log.Fatal("--ja must be a valid IPv4 address")
 		}
@@ -92,7 +94,7 @@ func validateInput(cfg *Config) (*Config){
 		}
 
 	}
-	return cfg 
+	return cfg
 }
 
 func isHex(s string) bool {

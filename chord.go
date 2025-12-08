@@ -7,12 +7,9 @@ import (
 	"log"
 	"math/big"
 	"time"
-
-	pb "chord/protocol" // Update path as needed
 )
 
 const (
-	//defaultPort       = "3410"
 	successorListSize = 3
 	keySize           = sha1.Size * 8
 	maxLookupSteps    = 32
@@ -24,16 +21,27 @@ var (
 )
 
 func (n *Node) Create() {
+	n.mu.Lock()
+	log.Print("Creating")
 	n.Predecessor = nil // not need to hold this
-	n.Successors = make([]*Node, successorListSize)
-	n.Successors[0] = n
+	n.Successors = make([]*NodeAddr, successorListSize)
+	n.Successors[0] = n.Address
+	n.mu.Unlock()
 }
 
 func (n *Node) Join(node_addr *NodeAddr) {
-	//maybe fix to later
+	n.mu.Lock()
+	log.Print("Joining")
+	//maybe fix  later
 	n.Predecessor = node_addr
-	n.Successors = make([]*Node, successorListSize)
-	//panic("unimplemented")
+	n.Successors = make([]*NodeAddr, successorListSize)
+
+	n.mu.Unlock()
+
+}
+
+func GetAllKeyValues(ctx context.Context, s string) (any, any) {
+	panic("unimplemented")
 }
 
 func Lookup() any {
@@ -46,41 +54,12 @@ func PrintState() any {
 	panic("unimplemented")
 }
 
-// get the sha1 hash of a string as a bigint
-func hash(elt string) *big.Int {
-	hasher := sha1.New()
-	hasher.Write([]byte(elt))
-	return new(big.Int).SetBytes(hasher.Sum(nil))
-}
-
-// calculate the address of a point somewhere across the ring
-// this gets the target point for a given finger table entry
-// the successor of this point is the finger table entry
-func jump(address string, fingerentry int) *big.Int {
-	n := hash(address)
-
-	fingerentryminus1 := big.NewInt(int64(fingerentry) - 1)
-	distance := new(big.Int).Exp(two, fingerentryminus1, nil)
-
-	sum := new(big.Int).Add(n, distance)
-
-	return new(big.Int).Mod(sum, hashMod)
-}
-
-// returns true if elt is between start and end, accounting for the right
-// if inclusive is true, it can match the end
-func between(start, elt, end *big.Int, inclusive bool) bool {
-	if end.Cmp(start) > 0 {
-		return (start.Cmp(elt) < 0 && elt.Cmp(end) < 0) || (inclusive && elt.Cmp(end) == 0)
-	} else {
-		return start.Cmp(elt) < 0 || elt.Cmp(end) < 0 || (inclusive && elt.Cmp(end) == 0)
-	}
-}
-
 // Ping implements the Ping RPC method
-func (n *Node) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
+func (n *Node) Ping(ctx context.Context, req PingRequest) (PingResponse, error) {
 
-	return &pb.PingResponse{}, nil
+	log.Print("PINGED")
+
+	return PingResponse{}, nil
 }
 
 //TODO the node should ping the node before to know that its alive,
@@ -89,7 +68,6 @@ func (n *Node) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse,
 func (n *Node) checkPredecessor() {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	// TODO: Student will implement this
 
 	//we have no predecessor, exit if
 	if n.Predecessor == nil {
@@ -97,15 +75,10 @@ func (n *Node) checkPredecessor() {
 		return
 	} else {
 
-		req := &pb.PingRequest{}
-		res := &pb.PingResponse{}
-
-		log.Print("Pred is:", ToString(n.Predecessor))
-
-		err := n.call(ToString(n.Predecessor), "PING", req, res)
+		err := n.call(ToString(n.Predecessor), "PING", PingRequest{}, PingResponse{})
 
 		if err != nil {
-			log.Print("Errors is:", err)
+			log.Print("Error in checkPredecessor:", err)
 			n.Predecessor = nil
 		}
 
@@ -115,6 +88,9 @@ func (n *Node) checkPredecessor() {
 
 func (n *Node) stabilize() {
 	// TODO: Student will implement this
+
+	n.call(ToString(n.Predecessor), "GET_Predecessor", PingRequest{}, PingResponse{})
+
 }
 
 func (n *Node) fixFingers(nextFinger int) int {
@@ -133,8 +109,6 @@ func (n *Node) call(address string, method string, request interface{}, reply in
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		//request.(*pb.PingRequest)// type asseration, will panik if not right
-
 		err := PingNode(ctx, address)
 		if err != nil {
 
@@ -142,58 +116,26 @@ func (n *Node) call(address string, method string, request interface{}, reply in
 		}
 
 	}
+	if method == "GET_Predecessor" {
+
+		_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+	}
 
 	return nil
 }
 
-// maybe will delete later
-
-// Put implements the Put RPC method
-func (n *Node) Put(ctx context.Context, req *pb.PutRequest) (*pb.PutResponse, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	log.Print("put: [", req.Key, "] => [", req.Value, "]")
-	n.Bucket[req.Key] = req.Value
-	return &pb.PutResponse{}, nil
-}
-
-// Get implements the Get RPC method
-func (n *Node) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
+func (n *Node) GetPredecessor(ctx context.Context, req GetPredecessorRequest) (GetPredecessorResponse, error) {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
-	value, exists := n.Bucket[req.Key]
-	if !exists {
-		log.Print("get: [", req.Key, "] miss")
-		return &pb.GetResponse{Value: ""}, nil
+	if n.Predecessor == nil {
+		return GetPredecessorResponse{Node: *n.Address}, nil
 	}
-	log.Print("get: [", req.Key, "] found [", value, "]")
-	return &pb.GetResponse{Value: value}, nil
-}
-
-// Delete implements the Delete RPC method
-func (n *Node) Delete(ctx context.Context, req *pb.DeleteRequest) (*pb.DeleteResponse, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	if _, exists := n.Bucket[req.Key]; exists {
-		log.Print("delete: found and deleted [", req.Key, "]")
-		delete(n.Bucket, req.Key)
-	} else {
-		log.Print("delete: not found [", req.Key, "]")
-	}
-	return &pb.DeleteResponse{}, nil
-}
-
-// GetAll implements the GetAll RPC method
-func (n *Node) GetAll(ctx context.Context, req *pb.GetAllRequest) (*pb.GetAllResponse, error) {
-	n.mu.RLock()
-	defer n.mu.RUnlock()
-	log.Printf("getall: returning %d key-value pairs", len(n.Bucket))
-
-	// Create a copy of the bucket map
-	keyValues := make(map[string]string)
-	for k, v := range n.Bucket {
-		keyValues[k] = v
-	}
-
-	return &pb.GetAllResponse{KeyValues: keyValues}, nil
+	return GetPredecessorResponse{
+		Node: NodeAddr{
+			IP:   n.Predecessor.IP,
+			Port: int(n.Predecessor.Port),
+		},
+	}, nil
 }

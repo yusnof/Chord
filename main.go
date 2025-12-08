@@ -2,21 +2,17 @@ package main
 
 import (
 	"bufio"
-	pb "chord/protocol"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 
 	"google.golang.org/grpc"
-)
-
-var (
-	localaddress string // TODO to be removed
 )
 
 func main() {
@@ -115,7 +111,7 @@ func StartServer(cfg Config) *Node {
 	// Start listening for RPC calls
 	grpcServer := grpc.NewServer()
 
-	pb.RegisterChordServer(grpcServer, node)
+	RegisterChordServer(grpcServer, node)
 
 	lis, err := net.Listen("tcp", ":"+strconv.Itoa(cfg.Port))
 
@@ -139,7 +135,6 @@ func StartServer(cfg Config) *Node {
 		node.Join(JoinAddr)
 	}
 
-	node.toString()
 
 	go func() {
 		nextFinger := 0
@@ -158,12 +153,24 @@ func StartServer(cfg Config) *Node {
 	return node
 }
 
+func RegisterChordServer(grpcServer *grpc.Server, node *Node) {
+	panic("unimplemented")
+}
+
 func resolveAddress(address string) string {
-	/*if strings.HasPrefix(address, ":") {
-		return net.JoinHostPort(localaddress, address[1:])
-	} else if !strings.Contains(address, ":") {
-		return net.JoinHostPort(address, strconv.Itoa(node_addr.Port))
-	}*/
+	if !strings.Contains(address, ":") {
+		log.Print("Wrong addr format")
+	}
+
 	return address
 
+}
+
+func openNewTerminal(osPID string) error {
+	logFile := "Desktop/chord/chord-" + osPID + ".log"
+	command := "tail -f " + logFile
+
+	cmd := exec.Command("osascript", "-e",
+		fmt.Sprintf(`tell application "Terminal" to do script "%s"`, command))
+	return cmd.Start()
 }
