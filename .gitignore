@@ -2,3 +2,5 @@ chord
 
 
 chord.log
+//no need to uload the log files 
+*.log 

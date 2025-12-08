@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 
 	pb "chord/protocol" // Update path as needed
 
@@ -13,6 +14,7 @@ import (
 // PingNode sends a ping to another node
 func PingNode(ctx context.Context, address string) error {
 	address = resolveAddress(address)
+	log.Printf("Final ip is: %s", address)
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return fmt.Errorf("failed to connect: %v", err)

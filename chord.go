@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"crypto/sha1"
-	"errors"
+	"fmt"
 	"log"
 	"math/big"
 	"time"
@@ -23,7 +23,6 @@ var (
 	hashMod = new(big.Int).Exp(big.NewInt(2), big.NewInt(keySize), nil)
 )
 
-
 func (n *Node) Create() {
 	n.Predecessor = nil // not need to hold this
 	n.Successors = make([]*Node, successorListSize)
@@ -31,7 +30,7 @@ func (n *Node) Create() {
 }
 
 func (n *Node) Join(node_addr *NodeAddr) {
-	//maybe fix to later 
+	//maybe fix to later
 	n.Predecessor = node_addr
 	n.Successors = make([]*Node, successorListSize)
 	//panic("unimplemented")
@@ -80,30 +79,33 @@ func between(start, elt, end *big.Int, inclusive bool) bool {
 
 // Ping implements the Ping RPC method
 func (n *Node) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
-	log.Print("ping: received request")
 
-	err := PingNode(ctx, ToString(n.Predecessor))
-
-	return &pb.PingResponse{}, err
+	return &pb.PingResponse{}, nil
 }
 
 //TODO the node should ping the node before to know that its alive,
 
 // of resose.
 func (n *Node) checkPredecessor() {
+	n.mu.Lock()
+	defer n.mu.Unlock()
 	// TODO: Student will implement this
 
 	//we have no predecessor, exit if
 	if n.Predecessor == nil {
-		log.Print("Empty Predecessor")
+		log.Printf("%v : Empty Predecessor", ToString(n.Address))
 		return
 	} else {
+
 		req := &pb.PingRequest{}
 		res := &pb.PingResponse{}
+
+		log.Print("Pred is:", ToString(n.Predecessor))
 
 		err := n.call(ToString(n.Predecessor), "PING", req, res)
 
 		if err != nil {
+			log.Print("Errors is:", err)
 			n.Predecessor = nil
 		}
 
@@ -128,12 +130,15 @@ func (n *Node) fixFingers(nextFinger int) int {
 func (n *Node) call(address string, method string, request interface{}, reply interface{}) error {
 
 	if method == "PING" {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		_, err := n.Ping(ctx, request.(*pb.PingRequest)) // type asseration, will panik if not right
+		//request.(*pb.PingRequest)// type asseration, will panik if not right
+
+		err := PingNode(ctx, address)
 		if err != nil {
-			return errors.New("Ping was not succ")
+
+			return fmt.Errorf("ping failed: %w", err)
 		}
 
 	}

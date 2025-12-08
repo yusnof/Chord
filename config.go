@@ -1,14 +1,16 @@
 package main
+
 import (
-    "flag"
-    "log"
-    "net"
+	"flag"
+	"log"
+	"net"
 	"os"
+	"strconv"
 )
 
 
 func LogerConfigurationSetup() *os.File {
-	logFile, err := os.OpenFile("chord.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	logFile, err := os.OpenFile("chord-"+ strconv.Itoa(os.Getpid()) + ".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalln("logger is bad ")
 	}
@@ -33,6 +35,7 @@ func Loadconfig() Config {
 	flag.IntVar(&cfg.TS, "ts", 3000, "The time in milliseconds between invocations of ‘stabilize’. Represented as a base-10 integer.")
 	flag.IntVar(&cfg.TFF, "tff", 1000, "The time in milliseconds between invocations of ‘fix fingers’.")
 	flag.IntVar(&cfg.TCP, "tcp", 3000, "The time in milliseconds between invocations of check predecessor’")
+	
 	flag.IntVar(&cfg.R, "r", 4, "The number of successors maintained by the Chord client. ")
 	flag.StringVar(&cfg.I, "i", "", "he identifier (ID) assigned to the Chord client which will override the ID computed by the SHA1 sum of the client’s IP address and port number.")
 

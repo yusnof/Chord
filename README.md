@@ -4,11 +4,15 @@ https://www.cs.utahtech.edu/cs/3410/chord-starter/README.php
 
 go build
 
+we are currnly running the localhost
+./chord -a 127.0.0.1 -p 4170 --ts 3000 --tff 1000 --tcp 3000 -r 4
 
-./chord create [-port PORT]
 
-
-./chord join -addr ADDRESS [-port PORT]
-
+./chord -a 127.0.0.1 -p 4171 --ja 127.0.0.1 --jp 4170 --ts 3000 --tff 1000 --tcp 3000 -r 4
 
 tail -f chord.log
+
+
+
+to test: 
+grpcurl -plaintext -proto ./protocol/chord.proto -d '{}' 127.0.0.1:4170 chord.Chord/Ping
