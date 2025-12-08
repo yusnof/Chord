@@ -6,13 +6,13 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
+	"net/rpc"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
-
-	"google.golang.org/grpc"
 )
 
 func main() {
@@ -107,21 +107,18 @@ func StartServer(cfg Config) *Node {
 		Bucket:      make(map[string]string),
 	}
 	//TOD add more logic here
-
-	// Start listening for RPC calls
-	grpcServer := grpc.NewServer()
-
-	RegisterChordServer(grpcServer, node)
-
 	lis, err := net.Listen("tcp", ":"+strconv.Itoa(cfg.Port))
 
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
+	rpc.Register(node)
+	rpc.HandleHTTP()
+
 	go func() {
 		log.Printf("Starting Chord node server on %s", strconv.Itoa(cfg.Port))
-		if err := grpcServer.Serve(lis); err != nil {
+		if err := http.Serve(lis, nil); err != nil {
 			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
@@ -134,7 +131,6 @@ func StartServer(cfg Config) *Node {
 		}
 		node.Join(JoinAddr)
 	}
-
 
 	go func() {
 		nextFinger := 0
@@ -153,9 +149,7 @@ func StartServer(cfg Config) *Node {
 	return node
 }
 
-func RegisterChordServer(grpcServer *grpc.Server, node *Node) {
-	panic("unimplemented")
-}
+
 
 func resolveAddress(address string) string {
 	if !strings.Contains(address, ":") {
@@ -165,7 +159,6 @@ func resolveAddress(address string) string {
 	return address
 
 }
-
 func openNewTerminal(osPID string) error {
 	logFile := "Desktop/chord/chord-" + osPID + ".log"
 	command := "tail -f " + logFile

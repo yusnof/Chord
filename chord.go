@@ -104,7 +104,6 @@ func (n *Node) fixFingers(nextFinger int) int {
 
 // will be used in order to call the other nodes.
 func (n *Node) call(address string, method string, request interface{}, reply interface{}) error {
-
 	if method == "PING" {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -117,7 +116,6 @@ func (n *Node) call(address string, method string, request interface{}, reply in
 
 	}
 	if method == "GET_Predecessor" {
-
 		_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
