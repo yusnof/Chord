@@ -1,24 +1,20 @@
 package main
 
 import (
-	"context"
+	"math/big"
 	"strconv"
 	"sync"
-
-	"google.golang.org/grpc"
 )
 
-type ChordClient interface {
-    Ping(ctx context.Context, in PingRequest, opts ...grpc.CallOption) (PingResponse, error)
-    GetPredecessor(ctx context.Context, in GetPredecessorRequest, opts ...grpc.CallOption) (GetPredecessorResponse, error)
-}
+
 
 // Node represents a node in the Chord DHT
 type Node struct {
 	mu          sync.RWMutex
+	ID          *big.Int
 	Address     *NodeAddr
-	Predecessor *NodeAddr
-	Successors  []*NodeAddr
+	Predecessor *Node
+	Successor   *Node
 	FingerTable []string
 
 	Bucket map[string]string
@@ -49,13 +45,29 @@ type Config struct {
 type GetPredecessorRequest struct{}
 
 type GetPredecessorResponse struct {
-	Node NodeAddr
+	Node Node
 }
 
-type PingRequest struct{
-	Message string 
+type PingRequest struct {
+	Message string
 }
 
-type PingResponse struct{
-	Message string 
+type PingResponse struct {
+	Message string
 }
+
+
+type FindSuccessorRequest struct {
+    ID string
+}
+
+type FindSuccessorResponse struct {
+    Node Node
+}
+
+
+type NotifyRequest struct {
+    Node Node
+}
+
+type NotifyResponse struct{}

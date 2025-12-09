@@ -57,6 +57,7 @@ func RunShell(node *Node) {
 		case "help":
 			fmt.Println("Available commands:")
 			fmt.Println("  help              - Show this help message")
+			
 			fmt.Println("  Lookup     -takes as input the name of a file to be searched (e.g., “Hello.txt”).")
 			fmt.Println("  StoreFile  -takes the location of a file on a local disk, then performs a lookup to find the Chord node to store the file at")
 			fmt.Println("  PrintState - requires no input. The Chord client outputs its local state information at the current time")
@@ -103,7 +104,7 @@ func StartServer(cfg Config) *Node {
 	node := &Node{
 		Address:     addr,
 		FingerTable: make([]string, keySize+1),
-		Successors:  nil,
+		Successor:   nil,
 		Bucket:      make(map[string]string),
 	}
 	//TOD add more logic here
@@ -125,9 +126,11 @@ func StartServer(cfg Config) *Node {
 	if cfg.Flag_first_node {
 		node.Create()
 	} else {
-		JoinAddr := &NodeAddr{
-			IP:   cfg.JoinAddr,
-			Port: cfg.JoinPort,
+		JoinAddr := &Node{
+			Address: &NodeAddr{
+				IP:   cfg.JoinAddr,
+				Port: cfg.JoinPort,
+			},
 		}
 		node.Join(JoinAddr)
 	}
@@ -148,8 +151,6 @@ func StartServer(cfg Config) *Node {
 
 	return node
 }
-
-
 
 func resolveAddress(address string) string {
 	if !strings.Contains(address, ":") {
