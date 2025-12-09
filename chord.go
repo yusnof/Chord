@@ -43,19 +43,19 @@ func (n *Node) Join(node *Node) {
 	log.Print("Joining")
 	n.ID = hash(ToString(n.Address))
 	//maybe fix  later
-	//n.Predecessor = node
+	n.Predecessor = node
 
 	n.Successor = node
 
-	n.FindSuccessor(node)
+	n.Notify(node)
 
 	n.mu.Unlock()
 
 }
 
-func (n *Node) FindSuccessor(node *Node) error {
+func (n *Node) Notify(node *Node) error {
 
-	req := FindSuccessorRequest{ID: n.ID.String()}
+	req := FindSuccessorRequest{Node: NodePayload{NodeAddr: *n.Address}}
 	res := FindSuccessorResponse{}
 
 	client, err := rpc.DialHTTP("tcp", ToString(node.Address))
@@ -70,10 +70,10 @@ func (n *Node) FindSuccessor(node *Node) error {
 	}
 
 	n.mu.Lock()
-	n.Successor = &res.Node
+	n.Successor.Address = &res.Node.NodeAddr
 	n.mu.Unlock()
 
-	n.Notify()
+	//n.Notify()
 
 	return nil
 }
@@ -169,7 +169,7 @@ func (n *Node) Ping() error {
 	return nil
 }
 
-func (node *Node) GetPredecessor() (*Node, error) {
+func (node *Node) GetPredecessor() (*NodeAddr, error) {
 	if node.Predecessor != nil {
 		req := GetPredecessorRequest{}
 		res := GetPredecessorResponse{}
@@ -184,12 +184,12 @@ func (node *Node) GetPredecessor() (*Node, error) {
 		err = client.Call("Node.RCP_GetPredecessor", &req, &res)
 
 		if err != nil {
-			return &Node{}, fmt.Errorf("failed: %w", err)
+			return &NodeAddr{}, fmt.Errorf("failed: %w", err)
 		}
 
-		return &res.Node, nil
+		return &res.Node.NodeAddr, nil
 	} else {
-		return &Node{}, fmt.Errorf("shit")
+		return &NodeAddr{}, fmt.Errorf("shit")
 	}
 }
 
@@ -202,7 +202,7 @@ func (n *Node) Notify() {
 		return
 	}
 
-	req := NotifyRequest{Node: *n}
+	req := NotifyRequest{Node: NodePayload{NodeAddr: *n.Address}}
 	res := NotifyResponse{}
 
 	client, err := rpc.DialHTTP("tcp", ToString(succ.Address))

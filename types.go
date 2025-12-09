@@ -6,8 +6,6 @@ import (
 	"sync"
 )
 
-
-
 // Node represents a node in the Chord DHT
 type Node struct {
 	mu          sync.RWMutex
@@ -23,6 +21,11 @@ type Node struct {
 type NodeAddr struct {
 	IP   string
 	Port int
+}
+
+type NodePayload struct {
+	ID       string // maybe will be later on
+	NodeAddr NodeAddr
 }
 
 func ToString(node_addr *NodeAddr) string {
@@ -45,7 +48,7 @@ type Config struct {
 type GetPredecessorRequest struct{}
 
 type GetPredecessorResponse struct {
-	Node Node
+	Node NodePayload
 }
 
 type PingRequest struct {
@@ -56,18 +59,16 @@ type PingResponse struct {
 	Message string
 }
 
-
 type FindSuccessorRequest struct {
-    ID string
+	Node NodePayload
 }
 
 type FindSuccessorResponse struct {
-    Node Node
+	Node NodePayload
 }
 
-
 type NotifyRequest struct {
-    Node Node
+	Node NodePayload
 }
 
 type NotifyResponse struct{}
