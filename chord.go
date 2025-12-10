@@ -9,7 +9,6 @@ import (
 
 const (
 	keySize = sha1.Size * 8
-	m       = 3
 )
 
 func hash(elt string) *big.Int {
@@ -128,6 +127,53 @@ func (n *Node) checkPredecessor() {
 }
 
 func (n *Node) stabilize() {
+	n.mu.RLock()
+	succ := n.Successor
+	selfID := n.ID
+	n.mu.RUnlock()
+
+	if succ == nil || selfID == nil {
+		return
+	}
+
+	// Ask successor for its predecessor
+	req := NodeInformationRequest{}
+	res := NodeInformationResponse{}
+
+	succAddr := FormatToString(succ.IP, succ.Port)
+
+	if err := Call(succAddr, "getPred", &req, &res); err != nil {
+		log.Printf("stabilize: notify failed: %v", err)
+		return
+	}
+
+	// If successor's predecessor exists and is between us and successor, update
+	if res.ID != nil && between(selfID, res.ID, succ.ID) {
+		n.mu.Lock()
+		n.Successor = &Node{
+			ID:   res.ID,
+			IP:   res.IP,
+			Port: res.Port,
+		}
+		n.mu.Unlock()
+	}
+
+	// Notify current successor that we exist (so it updates its predecessor)
+	notifyReq := NodeInformationRequest{
+		ID:   n.ID,
+		IP:   n.IP,
+		Port: n.Port,
+	}
+	notifyReply := NodeInformationResponse{}
+
+	n.mu.RLock()
+	succAddr = FormatToString(n.Successor.IP, n.Successor.Port)
+	n.mu.RUnlock()
+
+	if err := Call(succAddr, "notify", &notifyReq, &notifyReply); err != nil {
+		log.Printf("stabilize: notify failed: %v", err)
+		return
+	}
 
 }
 

@@ -130,7 +130,6 @@ func StartServer(cfg Config) *Node {
 	if cfg.Flag_first_node {
 		node.Create()
 	} else {
-
 		JoinAddr := Node{
 			IP:   cfg.JoinAddr,
 			Port: cfg.JoinPort,

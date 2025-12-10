@@ -108,6 +108,12 @@ func Call(address string, rpcMethod string, req interface{}, reply interface{}) 
 
 	switch rpcMethod {
 
+	case "getPred":
+		if err := client.Call("Node.RCP_GetPredecessor", req, reply); err != nil {
+			log.Printf("stabilize: GetPredecessor RPC failed: %v", err)
+			return err
+		}
+
 	case "notify":
 		if err := client.Call("Node.RCP_Notify", req, reply); err != nil {
 			log.Printf("failes notify: %v", err)
@@ -139,13 +145,17 @@ func (node *Node) RCP_Notify(req *NodeInformationRequest, reply *NodeInformation
 }
 
 func (node *Node) RCP_GetPredecessor(req *NodeInformationRequest, reply *NodeInformationResponse) error {
-	// Fill reply pointer to send the data back
+	log.Print("GettingPredecessor")
 
-	log.Print("GetingPredecessor")
+	node.mu.RLock()
+	defer node.mu.RUnlock()
 
 	if node.Predecessor != nil {
-		//reply.Node = NodePayload{NodeAddr: *node.Predecessor.Address}
+		reply.ID = node.Predecessor.ID
+		reply.IP = node.Predecessor.IP
+		reply.Port = node.Predecessor.Port
 	}
+	// if nil, reply is zero-initialized (ID is nil), which is safe
 
 	return nil
 }
