@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"math/big"
 	"strconv"
 	"sync"
@@ -21,18 +22,17 @@ type Node struct {
 	Bucket map[string]string
 }
 
-type NodeAddr struct {
-	IP   string
-	Port int
-}
-
-type NodePayload struct {
-	ID       string // maybe will be later on
-	NodeAddr NodeAddr
-}
-
-func ToString(node_addr *NodeAddr) string {
-	return node_addr.IP + ":" + strconv.Itoa(node_addr.Port)
+func (n *Node) PrintNode() {
+	predAddr := "Nil"
+	if n.Predecessor != nil {
+		predAddr = FormatToString(n.Predecessor.IP, n.Predecessor.Port)
+	}
+	succAddr := "Nil"
+	if n.Successor != nil {
+		succAddr = FormatToString(n.Successor.IP, n.Successor.Port)
+	}
+	log.Printf("Node %s | ID: %v | Pred: %s | Succ: %s",
+		FormatToString(n.IP, n.Port), n.ID, predAddr, succAddr)
 }
 
 func FormatToString(ip string, port int) string {
@@ -52,12 +52,6 @@ type Config struct {
 	Flag_first_node bool
 }
 
-type GetPredecessorRequest struct{}
-
-type GetPredecessorResponse struct {
-	Node NodePayload
-}
-
 type PingRequest struct {
 	Message string
 }
@@ -66,16 +60,14 @@ type PingResponse struct {
 	Message string
 }
 
-type FindSuccessorRequest struct {
-	Node NodePayload
+type NodeInformationRequest struct {
+	ID   *big.Int
+	IP   string
+	Port int
 }
 
-type FindSuccessorResponse struct {
-	Node NodePayload
+type NodeInformationResponse struct {
+	ID   *big.Int
+	IP   string
+	Port int
 }
-
-type NotifyRequest struct {
-	Node NodePayload
-}
-
-type NotifyResponse struct{}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -95,12 +96,20 @@ func RunShell(node *Node) {
 
 func StartServer(cfg Config) *Node {
 
+	Id := hash(FormatToString(cfg.IPAddr, cfg.Port))
+
+	if cfg.I != "" {
+		n := new(big.Int)
+		n, ok := n.SetString(cfg.I, 10)
+		if !ok {
+			log.Fatal("error in transforming values")
+		}
+		Id = n
+	}
 	node := &Node{
-		IP:          cfg.IPAddr,
-		Port:        cfg.Port,
-		FingerTable: make([]*Node, keySize+1),
-		Successor:   nil,
-		Bucket:      make(map[string]string),
+		IP:   cfg.IPAddr,
+		Port: cfg.Port,
+		ID:   Id,
 	}
 	//TOD add more logic here
 	lis, err := net.Listen("tcp", ":"+strconv.Itoa(cfg.Port))
@@ -125,6 +134,7 @@ func StartServer(cfg Config) *Node {
 		JoinAddr := Node{
 			IP:   cfg.JoinAddr,
 			Port: cfg.JoinPort,
+			ID:   hash(FormatToString(cfg.JoinAddr, cfg.JoinPort)),
 		}
 
 		node.Join(&JoinAddr)

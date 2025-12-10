@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/sha1"
-	"fmt"
 	"log"
 	"math/big"
 	"net/rpc"
@@ -36,19 +35,61 @@ func (n *Node) Create() {
 
 	n.ID = hash(FormatToString(n.IP, n.Port))
 
+	n.PrintNode()
 	n.Successor = n
 	n.mu.Unlock()
 }
 
-func (n *Node) Join(node *Node) {
+func (n *Node) Join(npnode *Node) {
 	n.mu.Lock()
 	log.Print("Joining")
 	n.ID = hash(FormatToString(n.IP, n.Port))
 
-	//maybe fix  later
-	n.Predecessor = node
+	//npnode.ID = hash(FormatToString(n.IP, n.Port))
 
+	//maybe fix  later
+	n.Predecessor = nil
+
+	n.Successor = npnode.find_successor(n.ID, n.IP, n.Port)
+
+	n.PrintNode()
 	n.mu.Unlock()
+
+}
+
+func (n *Node) find_successor(id *big.Int, ip string, port int) *Node {
+
+	log.Print("finding a succesor")
+
+	req := NodeInformationRequest{
+		ID:   id,
+		IP:   ip,
+		Port: port,
+	}
+	res := NodeInformationResponse{}
+
+	client, err := rpc.DialHTTP("tcp", FormatToString(n.IP, n.Port))
+
+	log.Printf("finding_successor from: %v", FormatToString(n.IP, n.Port))
+
+	if err != nil {
+		log.Fatal("dialing:", err)
+	}
+	if err := client.Call("Node.RCP_FindSuccessor", &req, &res); err != nil {
+		log.Printf("find_successor RPC failed: %v", err)
+		return nil
+	}
+	defer client.Close()
+
+	node := &Node{
+		ID:   res.ID,
+		IP:   res.IP,
+		Port: res.Port,
+	}
+
+	log.Println("here")
+	n.PrintNode()
+	return node
 
 }
 
@@ -106,17 +147,7 @@ func (n *Node) Ping() error {
 
 	req.Message = "ping"
 
-	client, err := rpc.DialHTTP("tcp", FormatToString(n.IP, n.Port))
-	log.Printf("Pinging my pred: %v", FormatToString(n.IP, n.Port))
-	if err != nil {
-		log.Fatal("dialing:", err)
-	}
-	err = client.Call("Node.RCP_Ping", &req, &res)
-	if err != nil {
-		return fmt.Errorf("ping failed: %w", err)
-	}
-	if res.Message != "ok" {
-		return fmt.Errorf("ping failed:%v", 1)
-	}
+	Call(FormatToString(n.Predecessor.IP, n.Predecessor.Port), "ping", &req, &res)
+
 	return nil
 }
