@@ -30,6 +30,7 @@ func main() {
 
 	RunShell(node)
 }
+
 func RunShell(node *Node) {
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -49,10 +50,6 @@ func RunShell(node *Node) {
 		if len(parts) == 0 {
 			continue
 		}
-
-		//ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		//defer cancel()
-
 		switch parts[0] {
 		case "help":
 			fmt.Println("Available commands:")
@@ -93,8 +90,7 @@ func RunShell(node *Node) {
 			where “node information” corresponds to the identifier, IP address, and port for a given node. */
 
 		case "PrintState":
-			panic("")
-
+			node.PrintState()
 		case "quit":
 			fmt.Println("Exiting...")
 			return
@@ -108,7 +104,7 @@ func RunShell(node *Node) {
 }
 
 func StartServer(cfg Config) *Node {
-
+	
 	Id := hash(FormatToString(cfg.IPAddr, cfg.Port))
 
 	if cfg.I != "" {

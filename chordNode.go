@@ -34,6 +34,8 @@ func (n *Node) Create() {
 
 	n.ID = hash(FormatToString(n.IP, n.Port))
 
+	n.Bucket = make(map[string]string, 3)
+
 	n.PrintNode()
 	n.Successor = n
 	n.mu.Unlock()
@@ -44,12 +46,11 @@ func (n *Node) Join(npnode *Node) {
 	log.Print("Joining")
 	n.ID = hash(FormatToString(n.IP, n.Port))
 
-	//npnode.ID = hash(FormatToString(n.IP, n.Port))
-
 	//maybe fix  later
 	n.Predecessor = nil
-
 	n.Successor = npnode.find_successor(n.ID, n.IP, n.Port)
+
+	n.Bucket = make(map[string]string, 3)
 
 	n.PrintNode()
 	n.mu.Unlock()
@@ -57,7 +58,6 @@ func (n *Node) Join(npnode *Node) {
 }
 
 func (n *Node) find_successor(id *big.Int, ip string, port int) *Node {
-
 	log.Print("finding a succesor")
 
 	req := NodeInformationRequest{
@@ -101,7 +101,6 @@ func checkForFileInBucket(file string, bucket map[string]string) bool {
 }
 
 func (n *Node) Lookup(file string) (string, error) {
-
 	//we look at file in the local storage
 	n.mu.RLock()
 	if checkForFileInBucket(file, n.Bucket) {
@@ -134,17 +133,72 @@ func (n *Node) Lookup(file string) (string, error) {
 	}
 
 	return fileRes.Content, nil
-	
+
 }
 func StoreFile() any {
 	panic("unimplemented")
 }
-func PrintState() any {
-	panic("unimplemented")
+func (n *Node) PrintState() {
+
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+
+	selfAddr := FormatToString(n.IP, n.Port)
+	selfID := "<nil>"
+	if n.ID != nil {
+		selfID = n.ID.String()
+	}
+
+	predAddr, predID := "Nil", "<nil>"
+	if n.Predecessor != nil {
+		predAddr = FormatToString(n.Predecessor.IP, n.Predecessor.Port)
+		if n.Predecessor.ID != nil {
+			predID = n.Predecessor.ID.String()
+		}
+	}
+
+	succAddr, succID := "Nil", "<nil>"
+	if n.Successor != nil {
+		succAddr = FormatToString(n.Successor.IP, n.Successor.Port)
+		if n.Successor.ID != nil {
+			succID = n.Successor.ID.String()
+		}
+	}
+
+	// Print header
+	fmt.Printf("Node %s\n", selfAddr)
+	fmt.Printf("  ID        : %s\n", selfID)
+	fmt.Printf("  Predecessor: %s (ID=%s)\n", predAddr, predID)
+	fmt.Printf("  Successor  : %s (ID=%s)\n", succAddr, succID)
+
+	// Finger table summary (if present)
+	if n.FingerTable != nil {
+		fmt.Printf("  Fingers (%d):\n", len(n.FingerTable))
+		for i, f := range n.FingerTable {
+			if f == nil {
+				fmt.Printf("    [%2d] nil\n", i)
+			} else {
+				fid := "<nil>"
+				if f.ID != nil {
+					fid = f.ID.String()
+				}
+				fmt.Printf("    [%2d] %s (ID=%s)\n", i, FormatToString(f.IP, f.Port), fid)
+			}
+		}
+	} else {
+		fmt.Println("  Fingers: nil")
+	}
+
+	// Bucket info
+	if n.Bucket != nil {
+		fmt.Printf("  Bucket: %d entries\n", len(n.Bucket))
+	} else {
+		fmt.Println("  Bucket: nil")
+	}
+
 }
 
-//TODO the node should ping the node before to know that its alive,
-
+// TODO the node should ping the node before to know that its alive,
 // of resose.
 func (n *Node) checkPredecessor() {
 	n.mu.Lock()

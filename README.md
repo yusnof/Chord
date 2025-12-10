@@ -12,7 +12,3 @@ we are currnly running the localhost
 
 tail -f chord.log
 
-
-
-to test: 
-grpcurl -plaintext -proto ./protocol/chord.proto -d '{}' 127.0.0.1:4170 chord.Chord/Ping
