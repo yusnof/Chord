@@ -1,49 +1,45 @@
-version: '3.8'
 
 services:
   node1:
-    build: .
+    build: .  
     container_name: chord-node1
     hostname: node1
     ports:
       - "4170:4170"
-    environment:
-      - NODE_PORT=5001
-    command: ["./chord -a 127.0.0.1 -p 4170 --ts 3000 --tff 1000 --tcp 3000 -r 4"]
+    command: "./chord -a node1 -p 4170 --ts 3000 --tff 1000 --tcp 3000 -r 4"
     networks:
       - chord-network
-    
 
   node2:
-    build: .
+    build: .  
     container_name: chord-node2
     hostname: node2
     ports:
       - "4171:4171"
-    environment:
-      - JOIN_ADDRESS=node1:5001
-    command: ["./chord -a 127.0.0.1 -p 4171 --ja 127.0.0.1 --jp 4170 --ts 3000 --tff 1000 --tcp 3000 -r 4"]
+    command: "./chord -a node2 -p 4171 --ja node1 --jp 4170 --ts 3000 --tff 1000 --tcp 3000 -r 4"
     networks:
       - chord-network
-    depends_on: node1
+    depends_on:
+      - node1
     restart: on-failure
 
   node3:
-    build: .
+    build: .  
     container_name: chord-node3
     hostname: node3
     ports:
       - "4172:4172"
-    environment:
-      - JOIN_ADDRESS=node1:5001
-    command: ["./chord -a 127.0.0.1 -p 4172 --ja 127.0.0.1 --jp 4170 --ts 3000 --tff 1000 --tcp 3000 -r 4"]
+    command: "./chord -a node3 -p 4172 --ja node1 --jp 4170 --ts 3000 --tff 1000 --tcp 3000 -r 4"
     networks:
       - chord-network
-    depends_on: node1
+    depends_on:
+      - node1
     restart: on-failure
-
 
 networks:
   chord-network:
     driver: bridge
     name: chord-net
+
+
+
