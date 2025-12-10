@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"crypto/sha1"
 	"fmt"
 	"log"
@@ -11,6 +10,7 @@ import (
 
 const (
 	keySize = sha1.Size * 8
+	m       = 3
 )
 
 func hash(elt string) *big.Int {
@@ -21,11 +21,11 @@ func hash(elt string) *big.Int {
 
 // returns true if elt is between start and end, accounting for the right
 // if inclusive is true, it can match the end
-func between(start, elt, end *big.Int, inclusive bool) bool {
+func between(start, elt, end *big.Int) bool {
 	if end.Cmp(start) > 0 {
-		return (start.Cmp(elt) < 0 && elt.Cmp(end) < 0) || (inclusive && elt.Cmp(end) == 0)
+		return (start.Cmp(elt) < 0 && elt.Cmp(end) < 0) || (elt.Cmp(end) == 0)
 	} else {
-		return start.Cmp(elt) < 0 || elt.Cmp(end) < 0 || (inclusive && elt.Cmp(end) == 0)
+		return start.Cmp(elt) < 0 || elt.Cmp(end) < 0 || (elt.Cmp(end) == 0)
 	}
 }
 
@@ -33,7 +33,9 @@ func (n *Node) Create() {
 	n.mu.Lock()
 	log.Print("Creating")
 	n.Predecessor = nil // not need to hold this
-	n.ID = hash(ToString(n.Address))
+
+	n.ID = hash(FormatToString(n.IP, n.Port))
+
 	n.Successor = n
 	n.mu.Unlock()
 }
@@ -41,45 +43,13 @@ func (n *Node) Create() {
 func (n *Node) Join(node *Node) {
 	n.mu.Lock()
 	log.Print("Joining")
-	n.ID = hash(ToString(n.Address))
+	n.ID = hash(FormatToString(n.IP, n.Port))
+
 	//maybe fix  later
 	n.Predecessor = node
 
-	n.Successor = node
-
-	n.Notify(node)
-
 	n.mu.Unlock()
 
-}
-
-func (n *Node) Notify(node *Node) error {
-
-	req := FindSuccessorRequest{Node: NodePayload{NodeAddr: *n.Address}}
-	res := FindSuccessorResponse{}
-
-	client, err := rpc.DialHTTP("tcp", ToString(node.Address))
-	if err != nil {
-		log.Printf("Join: dialing bootstrap %s failed: %v", ToString(node.Address), err)
-		return err
-	}
-	err = client.Call("Node.RCP_FindSuccessor", &req, &res)
-	if err != nil {
-		log.Printf("Join: FindSuccessor RPC failed: %v", err)
-		return err
-	}
-
-	n.mu.Lock()
-	n.Successor.Address = &res.Node.NodeAddr
-	n.mu.Unlock()
-
-	//n.Notify()
-
-	return nil
-}
-
-func GetAllKeyValues(ctx context.Context, s string) (any, any) {
-	panic("unimplemented")
 }
 
 func Lookup() any {
@@ -101,7 +71,7 @@ func (n *Node) checkPredecessor() {
 
 	//we have no predecessor, exit if
 	if n.Predecessor == nil {
-		log.Printf("%v : Empty Predecessor", ToString(n.Address))
+		log.Printf("%v : Empty Predecessor", FormatToString(n.IP, n.Port))
 		return
 	} else {
 
@@ -117,24 +87,6 @@ func (n *Node) checkPredecessor() {
 }
 
 func (n *Node) stabilize() {
-	// TODO: Student will implement this
-
-	/*
-		log.Print("Stabilizing")
-		x, err := n.Successor.GetPredecessor()
-
-		if err != nil {
-			log.Printf("Error: %w", err)
-			return
-		}
-
-		value := between(x.ID, n.ID, n.Successor.ID, false)
-
-		if value {
-			n.Successor = x
-		}
-
-		n.Successor.Notify() */
 
 }
 
@@ -154,8 +106,8 @@ func (n *Node) Ping() error {
 
 	req.Message = "ping"
 
-	client, err := rpc.DialHTTP("tcp", ToString(n.Predecessor.Address))
-	log.Printf("Pinging my pred: %v", ToString(n.Predecessor.Address))
+	client, err := rpc.DialHTTP("tcp", FormatToString(n.IP, n.Port))
+	log.Printf("Pinging my pred: %v", FormatToString(n.IP, n.Port))
 	if err != nil {
 		log.Fatal("dialing:", err)
 	}
@@ -167,51 +119,4 @@ func (n *Node) Ping() error {
 		return fmt.Errorf("ping failed:%v", 1)
 	}
 	return nil
-}
-
-func (node *Node) GetPredecessor() (*NodeAddr, error) {
-	if node.Predecessor != nil {
-		req := GetPredecessorRequest{}
-		res := GetPredecessorResponse{}
-
-		client, err := rpc.DialHTTP("tcp", ToString(node.Predecessor.Address))
-
-		log.Printf("Geting Pred: %v", ToString(node.Predecessor.Address))
-
-		if err != nil {
-			log.Fatal("dialing:", err)
-		}
-		err = client.Call("Node.RCP_GetPredecessor", &req, &res)
-
-		if err != nil {
-			return &NodeAddr{}, fmt.Errorf("failed: %w", err)
-		}
-
-		return &res.Node.NodeAddr, nil
-	} else {
-		return &NodeAddr{}, fmt.Errorf("shit")
-	}
-}
-
-func (n *Node) Notify() {
-	n.mu.RLock()
-	succ := n.Successor
-	n.mu.RUnlock()
-
-	if succ == nil {
-		return
-	}
-
-	req := NotifyRequest{Node: NodePayload{NodeAddr: *n.Address}}
-	res := NotifyResponse{}
-
-	client, err := rpc.DialHTTP("tcp", ToString(succ.Address))
-	if err != nil {
-		log.Printf("Notify: dialing successor %s failed: %v", ToString(succ.Address), err)
-		return
-	}
-	if err := client.Call("Node.RCP_Notify", &req, &res); err != nil {
-		log.Printf("Notify: RPC to successor failed: %v", err)
-	}
-
 }

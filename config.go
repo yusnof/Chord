@@ -2,9 +2,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"strconv"
 )
 
@@ -20,10 +22,18 @@ func LogerConfigurationSetup() *os.File {
 	// Add this to force immediate writes:
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	//this will break on other OS 
+	//this will break on other OS
 	openNewTerminal(fileName)
 
 	return logFile
+}
+func openNewTerminal(osPID string) error {
+	logFile := "Desktop/chord/chord-" + osPID + ".log"
+	command := "tail -f " + logFile
+
+	cmd := exec.Command("osascript", "-e",
+		fmt.Sprintf(`tell application "Terminal" to do script "%s"`, command))
+	return cmd.Start()
 }
 
 func Loadconfig() Config {

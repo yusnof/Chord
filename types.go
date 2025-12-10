@@ -8,12 +8,15 @@ import (
 
 // Node represents a node in the Chord DHT
 type Node struct {
-	mu          sync.RWMutex
-	ID          *big.Int
-	Address     *NodeAddr
+	mu sync.RWMutex
+	ID *big.Int
+
+	IP   string
+	Port int
+
 	Predecessor *Node
 	Successor   *Node
-	FingerTable []string
+	FingerTable []*Node
 
 	Bucket map[string]string
 }
@@ -30,6 +33,10 @@ type NodePayload struct {
 
 func ToString(node_addr *NodeAddr) string {
 	return node_addr.IP + ":" + strconv.Itoa(node_addr.Port)
+}
+
+func FormatToString(ip string, port int) string {
+	return ip + ":" + strconv.Itoa(port)
 }
 
 type Config struct {
