@@ -2,9 +2,9 @@ package main
 
 import (
 	"crypto/sha1"
+	"fmt"
 	"log"
 	"math/big"
-	"net/rpc"
 )
 
 const (
@@ -67,18 +67,12 @@ func (n *Node) find_successor(id *big.Int, ip string, port int) *Node {
 	}
 	res := NodeInformationResponse{}
 
-	client, err := rpc.DialHTTP("tcp", FormatToString(n.IP, n.Port))
+	addr := FormatToString(n.IP, n.Port)
 
-	log.Printf("finding_successor from: %v", FormatToString(n.IP, n.Port))
-
-	if err != nil {
-		log.Fatal("dialing:", err)
-	}
-	if err := client.Call("Node.RCP_FindSuccessor", &req, &res); err != nil {
-		log.Printf("find_successor RPC failed: %v", err)
+	if err := Call(addr, "find-succesor", &req, &res); err != nil {
+		log.Printf("find-succesor: notify failed: %v", err)
 		return nil
 	}
-	defer client.Close()
 
 	node := &Node{
 		ID:   res.ID,
@@ -86,14 +80,61 @@ func (n *Node) find_successor(id *big.Int, ip string, port int) *Node {
 		Port: res.Port,
 	}
 
-	log.Println("here")
 	n.PrintNode()
 	return node
 
 }
 
-func Lookup() any {
-	panic("unimplemented")
+func checkForFileInBucket(file string, bucket map[string]string) bool {
+
+	//traverse through the map
+	for _, value := range bucket {
+
+		//check if present value is equals to userValue
+		if value == file {
+			return true
+		}
+	}
+
+	//if value not found return false
+	return false
+}
+
+func (n *Node) Lookup(file string) (string, error) {
+
+	//we look at file in the local storage
+	n.mu.RLock()
+	if checkForFileInBucket(file, n.Bucket) {
+		log.Printf("Lookup: found %q locally", file)
+		return n.Bucket[file], nil
+	}
+	n.mu.RUnlock()
+
+	hashedFilename := hash(file)
+
+	req := NodeInformationRequest{ID: hashedFilename}
+	res := NodeInformationResponse{}
+
+	addr := FormatToString(n.IP, n.Port)
+
+	if err := Call(addr, "find-succesor", &req, &res); err != nil {
+		return "", fmt.Errorf("Lookup: FindSuccessor failed: %w", err)
+	}
+
+	succAddr := FormatToString(res.IP, res.Port)
+	fileReq := GetFileRequest{Filename: file}
+	fileRes := GetFileResponse{}
+
+	if err := Call(succAddr, "getFile", &fileReq, &fileRes); err != nil {
+		return "", fmt.Errorf("Lookup: GetFile failed: %w", err)
+	}
+
+	if !fileRes.Found {
+		return "", fmt.Errorf("Lookup: file %q not found", file)
+	}
+
+	return fileRes.Content, nil
+	
 }
 func StoreFile() any {
 	panic("unimplemented")
@@ -116,7 +157,6 @@ func (n *Node) checkPredecessor() {
 	} else {
 
 		err := n.Ping()
-
 		if err != nil {
 			log.Print("Error in prev node, maybe dead:", err)
 			n.Predecessor = nil

@@ -51,23 +51,3 @@ type Config struct {
 	I               string
 	Flag_first_node bool
 }
-
-type PingRequest struct {
-	Message string
-}
-
-type PingResponse struct {
-	Message string
-}
-
-type NodeInformationRequest struct {
-	ID   *big.Int
-	IP   string
-	Port int
-}
-
-type NodeInformationResponse struct {
-	ID   *big.Int
-	IP   string
-	Port int
-}

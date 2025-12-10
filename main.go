@@ -64,23 +64,36 @@ func RunShell(node *Node) {
 
 			fmt.Println("  quit              - Exit the program")
 
+		/*
+			Lookup’ takes as input the name of a file to be searched (e.g., “Hello.txt”).
+			The Chord client takes this string, hashes it to a key in the identifier space,
+			and performs a search for the node that is the successor to the key (i.e., the owner of the key).
+			The Chord client then outputs that node’s identifier, IP address, port, and the contents of the file
+		*/
 		case "Lookup":
 			if len(parts) < 2 {
 				fmt.Println("Usage: Lookup <File Name>")
 				continue
 			}
-			err := Lookup()
+			conetet, err := node.Lookup(parts[1])
 
 			if err != nil {
 				fmt.Printf("Lookup failed: %v\n", err)
 			} else {
-				fmt.Println("Lookup successful")
+				fmt.Printf("The content of %v\n", parts[1])
+				fmt.Print(conetet)
 			}
 
 		case "StoreFile":
-			//TODO
+			panic("")
+			/*‘PrintState’ requires no input. The Chord client outputs its local state information at the current time, which consists of:
+			The Chord client’s own node information and its stored files,
+			The node information for all nodes in the successor list,
+			The node information for all nodes in the finger table,
+			where “node information” corresponds to the identifier, IP address, and port for a given node. */
+
 		case "PrintState":
-			//TODO
+			panic("")
 
 		case "quit":
 			fmt.Println("Exiting...")

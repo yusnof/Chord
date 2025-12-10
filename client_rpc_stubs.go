@@ -28,14 +28,14 @@ func (node *Node) RCP_FindSuccessor(req *NodeInformationRequest, reply *NodeInfo
 	selfID := node.ID
 	node.mu.RUnlock()
 
-	/*
+	
 		if succ == nil || selfID == nil {
 			log.Print("shit")
 			reply.ID = node.ID
 			reply.IP = node.IP
 			reply.Port = node.Port
 			return nil
-		} */
+		} 
 
 	// this is the case of the first node
 	if succ.ID == selfID {
@@ -119,11 +119,22 @@ func Call(address string, rpcMethod string, req interface{}, reply interface{}) 
 			log.Printf("failes notify: %v", err)
 			return err
 		}
+	case "getFile":
+		if err := client.Call("Node.RCP_GetFile", req, reply); err != nil {
+			return fmt.Errorf("Call: getFile RPC failed: %w", err)
+		}
+
 	case "ping":
 		log.Printf("Pinging my pred: %v", address)
 		err = client.Call("Node.RCP_Ping", req, reply)
 		if err != nil {
 			return fmt.Errorf("ping failed: %w", err)
+		}
+
+	case "find-succesor":
+		if err := client.Call("Node.RCP_FindSuccessor", req, reply); err != nil {
+			log.Printf("find_successor RPC failed: %v", err)
+			return fmt.Errorf("finding succeser failed: %w", err)
 		}
 	}
 
@@ -155,7 +166,46 @@ func (node *Node) RCP_GetPredecessor(req *NodeInformationRequest, reply *NodeInf
 		reply.IP = node.Predecessor.IP
 		reply.Port = node.Predecessor.Port
 	}
-	// if nil, reply is zero-initialized (ID is nil), which is safe
-
+	
 	return nil
+}
+
+func (node *Node) RCP_GetFile(req *GetFileRequest, reply *GetFileResponse) error {
+	log.Print("RCP_GetFile")
+
+	node.mu.RLock()
+	defer node.mu.RUnlock()
+
+	if node.Bucket == nil {
+		reply.Found = false
+		return nil
+	}
+
+	if content, ok := node.Bucket[req.Filename]; ok {
+		reply.Found = true
+		reply.Content = content
+		return nil
+	}
+
+	reply.Found = false
+	return nil
+}
+
+
+func (node *Node) RCP_StoreFile(req *StoreFileRequest, reply *StoreFileResponse) error {
+    log.Printf("RCP_StoreFile: storing %s", req.Filename)
+
+    node.mu.Lock()
+    defer node.mu.Unlock()
+
+    if node.Bucket == nil {
+        node.Bucket = make(map[string]string)
+    }
+
+    // Store as base64 or as raw string if text. Here we store raw bytes as a string.
+    node.Bucket[req.Filename] = string(req.Content)
+
+    reply.Success = true
+    reply.Message = "stored"
+    return nil
 }
