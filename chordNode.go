@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"os"
+	"path/filepath"
 )
 
 const (
@@ -114,6 +116,7 @@ func (n *Node) Lookup(file string) (string, error) {
 	req := NodeInformationRequest{ID: hashedFilename}
 	res := NodeInformationResponse{}
 
+	// maybe this is an ovekill look dir from the stored info
 	addr := FormatToString(n.IP, n.Port)
 
 	if err := Call(addr, "find-succesor", &req, &res); err != nil {
@@ -171,23 +174,24 @@ func (n *Node) PrintState() {
 	fmt.Printf("  Predecessor: %s (ID=%s)\n", predAddr, predID)
 	fmt.Printf("  Successor  : %s (ID=%s)\n", succAddr, succID)
 
-	// Finger table summary (if present)
-	if n.FingerTable != nil {
-		fmt.Printf("  Fingers (%d):\n", len(n.FingerTable))
-		for i, f := range n.FingerTable {
-			if f == nil {
-				fmt.Printf("    [%2d] nil\n", i)
-			} else {
-				fid := "<nil>"
-				if f.ID != nil {
-					fid = f.ID.String()
+	/*
+		// Finger table summary (if present)
+		if n.FingerTable != nil {
+			fmt.Printf("  Fingers (%d):\n", len(n.FingerTable))
+			for i, f := range n.FingerTable {
+				if f == nil {
+					fmt.Printf("    [%2d] nil\n", i)
+				} else {
+					fid := "<nil>"
+					if f.ID != nil {
+						fid = f.ID.String()
+					}
+					fmt.Printf("    [%2d] %s (ID=%s)\n", i, FormatToString(f.IP, f.Port), fid)
 				}
-				fmt.Printf("    [%2d] %s (ID=%s)\n", i, FormatToString(f.IP, f.Port), fid)
 			}
-		}
-	} else {
-		fmt.Println("  Fingers: nil")
-	}
+		} else {
+			fmt.Println("  Fingers: nil")
+		} */
 
 	// Bucket info
 	if n.Bucket != nil {
@@ -290,4 +294,48 @@ func (n *Node) Ping() error {
 	Call(FormatToString(n.Predecessor.IP, n.Predecessor.Port), "ping", &req, &res)
 
 	return nil
+}
+
+func (n *Node) StoreFile(localPath string, password string) (string, error) {
+	// read file bytes
+	data, err := os.ReadFile(localPath)
+	if err != nil {
+		return "", fmt.Errorf("StoreFile: read file: %w", err)
+	}
+	
+	filename := filepath.Base(localPath)
+
+	// 1) check if we already have it locally
+	n.mu.RLock()
+	if n.Bucket != nil {
+		if _, ok := n.Bucket[filename]; ok {
+			n.mu.RUnlock()
+			log.Printf("StoreFile: %s already local", filename)
+			return "", nil
+		}
+	}
+	n.mu.RUnlock()
+
+	// 2) find successor responsible for file key
+	keyID := hash(filename)
+	req := NodeInformationRequest{ID: keyID}
+	res := NodeInformationResponse{}
+	if err := Call(FormatToString(n.IP, n.Port), "find-succesor", &req, &res); err != nil {
+		return "", fmt.Errorf("StoreFile: find successor failed: %w", err)
+	}
+
+	succAddr := FormatToString(res.IP, res.Port)
+
+	// 3) send store RPC to responsible node
+	storeReq := StoreFileRequest{Filename: filename, Content: (data)}
+	storeRes := StoreFileResponse{}
+
+	if err := Call(succAddr, "storeFile", &storeReq, &storeRes); err != nil {
+		return "", fmt.Errorf("StoreFile: remote store failed: %w", err)
+	}
+	if !storeRes.Success {
+		return "", fmt.Errorf("StoreFile: remote store error: %s", storeRes.Message)
+	}
+
+	return succAddr, nil
 }

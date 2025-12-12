@@ -7,6 +7,19 @@ import (
 	"sync"
 )
 
+type Config struct {
+	IPAddr          string
+	Port            int
+	JoinAddr        string
+	JoinPort        int
+	TS              int
+	TFF             int
+	TCP             int
+	R               int
+	I               string
+	Flag_first_node bool
+}
+
 // Node represents a node in the Chord DHT
 type Node struct {
 	mu sync.RWMutex
@@ -37,17 +50,4 @@ func (n *Node) PrintNode() {
 
 func FormatToString(ip string, port int) string {
 	return ip + ":" + strconv.Itoa(port)
-}
-
-type Config struct {
-	IPAddr          string
-	Port            int
-	JoinAddr        string
-	JoinPort        int
-	TS              int
-	TFF             int
-	TCP             int
-	R               int
-	I               string
-	Flag_first_node bool
 }

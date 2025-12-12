@@ -25,16 +25,20 @@ type NodeInformationResponse struct {
 }
 
 type GetFileRequest struct {
+	ID       string // who asked about the file
 	Filename string
+	Password string
 }
 
 type GetFileResponse struct {
-	Found   bool
-	Content string 
+	Found    bool
+	Content  string
+	Password string
 }
 
 type StoreFileRequest struct {
 	Filename string
+	Password string
 	Content  []byte // raw file bytes
 }
 

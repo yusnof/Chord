@@ -50,14 +50,14 @@ func RunShell(node *Node) {
 		if len(parts) == 0 {
 			continue
 		}
-		switch parts[0] {
+		switch strings.ToLower(parts[0]) {
 		case "help":
 			fmt.Println("Available commands:")
 			fmt.Println("  help              - Show this help message")
 
-			fmt.Println("  Lookup     -takes as input the name of a file to be searched (e.g., “Hello.txt”).")
-			fmt.Println("  StoreFile  -takes the location of a file on a local disk, then performs a lookup to find the Chord node to store the file at")
-			fmt.Println("  PrintState - requires no input. The Chord client outputs its local state information at the current time")
+			fmt.Println("  lookup     -takes as input the name of a file to be searched (e.g., “Hello.txt”).")
+			fmt.Println("  storefile  -takes the location of a file on a local disk, then performs a lookup to find the Chord node to store the file at")
+			fmt.Println("  printstate - requires no input. The Chord client outputs its local state information at the current time")
 
 			fmt.Println("  quit              - Exit the program")
 
@@ -67,9 +67,9 @@ func RunShell(node *Node) {
 			and performs a search for the node that is the successor to the key (i.e., the owner of the key).
 			The Chord client then outputs that node’s identifier, IP address, port, and the contents of the file
 		*/
-		case "Lookup":
+		case "lookup":
 			if len(parts) < 2 {
-				fmt.Println("Usage: Lookup <File Name>")
+				fmt.Println("Usage: lookup <File Name>")
 				continue
 			}
 			conetet, err := node.Lookup(parts[1])
@@ -81,15 +81,20 @@ func RunShell(node *Node) {
 				fmt.Print(conetet)
 			}
 
-		case "StoreFile":
-			panic("")
-			/*‘PrintState’ requires no input. The Chord client outputs its local state information at the current time, which consists of:
-			The Chord client’s own node information and its stored files,
-			The node information for all nodes in the successor list,
-			The node information for all nodes in the finger table,
-			where “node information” corresponds to the identifier, IP address, and port for a given node. */
+		case "storefile":
+			if len(parts) < 3 {
+				fmt.Println("Usage: storefile <File Name> <Password>")
+				continue }
+				
+			nodeWhosaved, err := node.StoreFile(parts[1], parts[2])
 
-		case "PrintState":
+			if err != nil {
+				fmt.Printf("StoreFile failed: %v\n", err)
+			} else {
+				fmt.Printf("The node that has the file is %v\n", nodeWhosaved)
+			}
+
+		case "printstate":
 			node.PrintState()
 		case "quit":
 			fmt.Println("Exiting...")
@@ -104,7 +109,7 @@ func RunShell(node *Node) {
 }
 
 func StartServer(cfg Config) *Node {
-	
+
 	Id := hash(FormatToString(cfg.IPAddr, cfg.Port))
 
 	if cfg.I != "" {

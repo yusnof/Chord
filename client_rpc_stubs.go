@@ -202,7 +202,7 @@ func (node *Node) RCP_StoreFile(req *StoreFileRequest, reply *StoreFileResponse)
         node.Bucket = make(map[string]string)
     }
 
-    // Store as base64 or as raw string if text. Here we store raw bytes as a string.
+    
     node.Bucket[req.Filename] = string(req.Content)
 
     reply.Success = true
